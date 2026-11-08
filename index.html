@@ -1,0 +1,2005 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Owed: IEP service tracker (prototype)</title>
+<style>
+  :root {
+    --bg: #f6f3ed; --card: #ffffff; --ink: #1e2928; --muted: #5f6b69; --line: #e3ddd2;
+    --brand: #0d6b5d; --brand-dark: #0a5348; --brand-soft: #e1efeb;
+    --warn: #9a4212; --warn-soft: #fcefe5; --ok: #2c6b37; --ok-soft: #e6f2e7;
+    --r: 14px; --shadow: 0 1px 2px rgba(30,41,40,.05), 0 6px 18px rgba(30,41,40,.05);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+      "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+  h2 { font-size: 19px; line-height: 1.3; margin: 0 0 6px; }
+  h3 { font-size: 16px; margin: 0; }
+  p { margin: 0 0 10px; }
+  .muted { color: var(--muted); }
+  .fine { font-size: 13.5px; color: var(--muted); margin-top: 12px; }
+
+  /* Header */
+  .top { background: var(--brand); color: #fff; padding: 20px 0; }
+  .top .wrap { display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .brand { display: flex; gap: 12px; align-items: center; }
+  .mark { width: 42px; height: 42px; border-radius: 12px; background: #fff; color: var(--brand);
+    display: grid; place-items: center; font-weight: 800; font-size: 22px; flex: none; }
+  .name { font-weight: 800; font-size: 22px; letter-spacing: -.01em; line-height: 1.1; }
+  .tag { opacity: .92; font-size: 14px; }
+  .top-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .badge { font-size: 12.5px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.28);
+    padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
+  .langs { display: flex; border: 1px solid rgba(255,255,255,.4); border-radius: 999px; overflow: hidden; }
+  .langs button { font: inherit; font-size: 14px; color: #fff; background: transparent; border: 0;
+    padding: 5px 13px; cursor: pointer; }
+  .langs button + button { border-left: 1px solid rgba(255,255,255,.3); }
+  .langs button:hover { background: rgba(255,255,255,.12); }
+  .langs button.on { background: #fff; color: var(--brand-dark); font-weight: 700; }
+
+  /* Step tabs */
+  .steps { display: flex; gap: 6px; padding-top: 16px; padding-bottom: 4px; overflow-x: auto; }
+  .steps { scrollbar-width: none; }
+  .steps::-webkit-scrollbar { display: none; }
+  .steps button { flex: none; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    font: inherit; font-size: 14.5px; padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+  .steps button:hover { border-color: var(--brand); }
+  .steps button.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .steps .num { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--brand-soft); color: var(--brand-dark); font-size: 12px; font-weight: 700; margin-right: 6px; }
+  .steps button.active .num { background: rgba(255,255,255,.2); color: #fff; }
+
+  /* Cards and form controls */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r);
+    padding: 20px; margin: 14px 0; box-shadow: var(--shadow); }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin-top: 10px; }
+  .grid5 { display: grid; grid-template-columns: 2fr 1.3fr .8fr 1fr .9fr; gap: 10px; margin-top: 10px; }
+  label.f { display: block; font-size: 13.5px; font-weight: 600; }
+  label.f .hint { font-weight: 400; color: var(--muted); }
+  input[type=text], input[type=date], input[type=number], select, textarea {
+    width: 100%; font: inherit; color: var(--ink); background: #fff; border: 1px solid #d6cfc2;
+    border-radius: 10px; padding: 9px 11px; margin-top: 4px; }
+  textarea { resize: vertical; line-height: 1.5; }
+  input:focus, select:focus, textarea:focus, button:focus-visible { outline: 3px solid rgba(13,107,93,.25); border-color: var(--brand); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  .btn { font: inherit; font-size: 15px; border: 1px solid #cfc7b9; background: #fff; color: var(--ink);
+    padding: 9px 16px; border-radius: 10px; cursor: pointer; }
+  .btn:hover { border-color: var(--brand); }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+  .btn.primary:hover { background: var(--brand-dark); }
+  .btn.small { font-size: 13.5px; padding: 6px 11px; }
+  .btn.ghost { border-color: transparent; color: var(--muted); }
+  .pro { font-size: 11px; font-weight: 700; letter-spacing: .04em; background: #efe6d4; color: #7a5a17;
+    border-radius: 6px; padding: 2px 6px; margin-left: 6px; vertical-align: 1px; }
+  label.check { display: flex; gap: 8px; align-items: flex-start; font-size: 14.5px; cursor: pointer; margin-top: 8px; }
+  label.check input { margin-top: 4px; }
+  .notice { border-radius: 10px; padding: 11px 14px; margin: 14px 0; font-size: 15px; }
+  .notice.info { background: var(--brand-soft); color: var(--brand-dark); }
+  .notice.warn { background: var(--warn-soft); color: var(--warn); }
+  .next { display: flex; justify-content: flex-end; margin: 6px 0 20px; }
+  .seg-lang { display: inline-flex; border: 1px solid #d6cfc2; border-radius: 10px; overflow: hidden; margin-top: 4px; }
+  .seg-lang button { font: inherit; font-size: 14.5px; padding: 7px 14px; border: 0; background: #fff; cursor: pointer; color: var(--ink); }
+  .seg-lang button + button { border-left: 1px solid #e7e1d6; }
+  .seg-lang button.on { background: var(--ink); color: #fff; }
+
+  /* Services */
+  .svc { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-top: 12px; }
+  .svc-head { display: flex; justify-content: space-between; gap: 12px; }
+  .svc-name { font-weight: 700; }
+  .svc-plain { color: var(--muted); font-size: 14.5px; }
+  .svc-sum { margin: 8px 0 0; background: var(--brand-soft); color: var(--brand-dark); border-radius: 8px;
+    padding: 7px 10px; font-size: 15px; }
+  .flag { margin: 8px 0 0; font-size: 14px; color: var(--warn); }
+  .icon { border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 2px 6px; border-radius: 6px; height: fit-content; }
+  .icon:hover { background: #f1ece3; color: var(--ink); }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; font-size: 14px; color: var(--brand-dark); }
+  .empty { text-align: center; padding: 22px 10px; color: var(--muted); }
+
+  /* Check-ins */
+  .progress { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+  .meter { flex: 1; height: 8px; background: #eee8dd; border-radius: 99px; overflow: hidden; }
+  .meter span { display: block; height: 100%; background: var(--brand); border-radius: 99px; }
+  .week { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-top: 12px; background: #fff; }
+  .week.done { background: #fbfaf7; }
+  .week-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .week-head strong { font-size: 16px; }
+  .pill { font-size: 12px; font-weight: 600; background: #f4e9d3; color: #7a5a17; border-radius: 99px; padding: 2px 9px; margin-left: 8px; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .week-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .week-actions label.check { margin: 0; font-size: 14px; }
+  .q { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px dashed var(--line); }
+  .q:first-of-type { margin-top: 10px; }
+  .q-label { font-size: 15px; }
+  .q-label small { display: block; color: var(--muted); font-size: 13px; }
+  .seg { display: flex; border: 1px solid #d6cfc2; border-radius: 10px; overflow: hidden; flex: none; }
+  .seg button { font: inherit; font-size: 14.5px; min-width: 38px; padding: 6px 8px; border: 0;
+    border-left: 1px solid #e7e1d6; background: #fff; cursor: pointer; color: var(--ink); }
+  .seg button:first-child { border-left: 0; }
+  .seg button:hover { background: #f4f0e8; }
+  .seg button.on { background: var(--warn); color: #fff; }
+  .seg button.on.full { background: var(--brand); }
+
+  /* Owed */
+  .hero { border-radius: var(--r); padding: 22px; margin: 14px 0; }
+  .hero.warn { background: var(--warn-soft); color: var(--warn); }
+  .hero.ok { background: var(--ok-soft); color: var(--ok); }
+  .hero .big { font-size: 34px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+  .hero .sub { font-size: 16px; margin-top: 4px; }
+  .bar-row { padding: 12px 0; border-top: 1px solid var(--line); }
+  .bar-row:first-of-type { border-top: 0; }
+  .bar-top { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
+  .bar-top .owed { font-weight: 700; color: var(--warn); white-space: nowrap; }
+  .bar-top .owed.zero { color: var(--ok); font-weight: 600; }
+  .bar { height: 10px; background: var(--warn-soft); border-radius: 99px; overflow: hidden; margin-top: 7px; }
+  .bar span { display: block; height: 100%; background: var(--brand); }
+  .bar-sub { font-size: 13.5px; color: var(--muted); margin-top: 4px; }
+  table.log { width: 100%; border-collapse: collapse; font-size: 14.5px; margin-top: 8px; }
+  table.log th, table.log td { text-align: left; padding: 8px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+  table.log th { font-size: 13px; color: var(--muted); font-weight: 600; border-top: 0; }
+
+  .promise { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .promise span { background: var(--ok-soft); color: var(--ok); border-radius: 999px; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+  .reasons { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: -2px 0 8px; font-size: 13px; }
+  .reasons .chip { font-size: 13px; padding: 4px 10px; }
+  .chip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  /* Focus time */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .chip { font: inherit; font-size: 14px; border: 1px solid #d6cfc2; background: #fff; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  .chip:hover { border-color: var(--brand); }
+  .step-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .step-row .n { width: 26px; height: 26px; border-radius: 50%; background: var(--brand-soft); color: var(--brand-dark); display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none; }
+  .step-row input { margin-top: 0; }
+  .step-row.done input { text-decoration: line-through; color: var(--muted); }
+  .focus-stage { text-align: center; padding: 26px 20px; }
+  .ring { width: 230px; height: 230px; margin: 4px auto 0; position: relative; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring .track { stroke: #ece6db; }
+  .ring .bar { stroke: var(--brand); transition: stroke-dashoffset .25s linear; }
+  .ring.break .bar { stroke: #d08a2c; }
+  .ring .time { position: absolute; inset: 0; display: grid; place-items: center; font-size: 46px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .now-step { font-size: 24px; font-weight: 700; margin: 18px auto 6px; max-width: 520px; line-height: 1.3; }
+  .now-label { color: var(--muted); font-size: 14px; text-transform: uppercase; letter-spacing: .06em; }
+  .big-btn { font-size: 20px; padding: 14px 28px; border-radius: 14px; }
+  .stars { font-size: 30px; letter-spacing: 2px; }
+  .celebrate { font-size: 26px; font-weight: 800; margin: 6px 0; }
+  .break-idea { font-size: 22px; font-weight: 700; margin: 14px auto; max-width: 480px; }
+  .tips li { margin: 6px 0; }
+  .practice-word { font-size: 64px; font-weight: 800; margin: 14px 0 12px; line-height: 1.1; word-break: break-word; }
+  .rep-dots { font-size: 28px; color: var(--brand); letter-spacing: 6px; }
+  .voice-tag { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .fb { border-radius: 12px; padding: 12px 14px; margin: 14px auto 0; max-width: 460px; font-size: 19px; font-weight: 700; }
+  .fb small { display: block; font-weight: 400; font-size: 14px; margin-top: 4px; }
+  .fb.great { background: var(--ok-soft); color: var(--ok); }
+  .fb.close { background: #fdf3dc; color: #7a5a17; }
+  .fb.far, .fb.none, .fb.moveOn, .fb.network { background: var(--brand-soft); color: var(--brand-dark); }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+  .listening { animation: pulse 1s ease-in-out infinite; }
+  .mic-box { border: 1px dashed #cfc7b9; border-radius: 12px; padding: 12px 14px; margin-top: 14px; }
+  .tries { list-style: none; padding: 0; margin: 8px 0 0; max-height: 46vh; overflow: auto; }
+  .tries li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14.5px; }
+  .tries li:first-child { border-top: 0; }
+  .tries .lvl { margin-left: auto; font-size: 13px; color: var(--muted); }
+  .credits { max-height: 50vh; overflow: auto; font-size: 13.5px; margin: 8px 0 0; padding-left: 18px; }
+  .credits li { margin: 3px 0; }
+  .note-box { white-space: pre-wrap; background: #faf8f4; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14.5px; margin: 8px 0; max-height: 34vh; overflow: auto; }
+  .modal-back { position: fixed; inset: 0; background: rgba(20,28,27,.45); display: grid; place-items: center; padding: 20px; z-index: 50; }
+  .modal { background: #fff; border-radius: 14px; padding: 20px; max-width: 460px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+  .modal p { font-size: 16px; }
+  .modal .row { justify-content: flex-end; }
+  .foot { padding: 10px 20px 40px; font-size: 13.5px; color: var(--muted); }
+  .foot button { font: inherit; font-size: 13.5px; background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; padding: 0; }
+
+  @media (max-width: 640px) {
+    .grid, .grid5 { grid-template-columns: 1fr; }
+    .q { flex-direction: column; align-items: stretch; }
+    .seg { align-self: flex-start; }
+    .hero .big { font-size: 28px; }
+    .badge { white-space: normal; }
+    .top-right { align-items: flex-start; }
+  }
+
+  /* Printing the case file */
+  #print-area { display: none; }
+  @media print {
+    body { background: #fff; }
+    body > *:not(#print-area) { display: none !important; }
+    #print-area { display: block; font-size: 12pt; color: #000; }
+    #print-area pre { white-space: pre-wrap; font: inherit; }
+    #print-area .page-break { break-before: page; }
+    #print-area table { width: 100%; border-collapse: collapse; }
+    #print-area th, #print-area td { border: 1px solid #999; padding: 4px 6px; text-align: left; font-size: 10.5pt; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">O</div>
+      <div>
+        <div class="name">Owed</div>
+        <div class="tag" data-i18n="tagline"></div>
+      </div>
+    </div>
+    <div class="top-right">
+      <div class="langs" id="langs" role="group">
+        <button data-lang="en" lang="en">English</button>
+        <button data-lang="es" lang="es">Español</button>
+        <button data-lang="zh" lang="zh-Hans">中文</button>
+      </div>
+      <span class="badge" data-i18n="badge"></span>
+    </div>
+  </div>
+</header>
+
+<nav class="steps wrap" id="steps">
+  <button data-tab="iep"><span class="num">1</span><span data-i18n="stepIep"></span></button>
+  <button data-tab="checkins"><span class="num">2</span><span data-i18n="stepCheckins"></span></button>
+  <button data-tab="owed"><span class="num">3</span><span data-i18n="stepOwed"></span></button>
+  <button data-tab="letter"><span class="num">4</span><span data-i18n="stepLetter"></span></button>
+  <button data-tab="focus"><span class="num">★</span><span data-i18n="stepFocus"></span></button>
+</nav>
+
+<div class="wrap" id="banner"></div>
+<main class="wrap" id="app"></main>
+
+<footer class="foot">
+  <div class="wrap" style="padding:0">
+    <span data-i18n="footer"></span>
+    <button data-action="backup" data-i18n="backup"></button> ·
+    <button data-action="restore" data-i18n="restore"></button> ·
+    <button data-action="clear-all" data-i18n="clearAll"></button>
+  </div>
+</footer>
+
+<div id="modal-root"></div>
+<div id="print-area"></div>
+
+<script src="core.js"></script>
+<script>
+(() => {
+  'use strict';
+  const C = window.OwedCore;
+  const STORE = 'owed-prototype-v1';
+  const TODAY = C.todayISO();
+
+  // ------------------------------------------------------------------ Words
+  // Every piece of text on screen, in English, Spanish and Simplified Chinese.
+  const plural = (n, one, many) => (n === 1 ? one : many);
+  const I18N = {
+    en: {
+      htmlLang: 'en',
+      title: 'Owed: IEP service tracker (prototype)',
+      tagline: "Know which IEP services your child got, and which ones they're still owed.",
+      badge: 'Prototype · your data stays on this device',
+      langLabel: 'Language',
+      stepIep: "Your child's IEP", stepCheckins: 'Weekly check-ins', stepOwed: "What's owed", stepLetter: 'Letter to school',
+      readTitle: 'Read your IEP',
+      readHelp: "Upload your child's IEP as a PDF, or paste its text. The most important part is the page that lists services, like speech or occupational therapy. Owed finds every session the school promised.",
+      placeholder: 'Paste the IEP text here…',
+      btnRead: 'Read my IEP', btnSample: 'Try a sample IEP',
+      protoNote: 'Prototype note: this version reads English IEP text with simple rules. The real app would use AI to read phone photos and IEPs in other languages.',
+      btnUpload: 'Upload IEP (PDF)', uploadNote: 'Your file is read on this device. It is never uploaded anywhere.',
+      reading: 'Reading your IEP…',
+      pdfScanned: "This PDF looks like a scan (a picture of the pages), so Owed can't read the words yet. Add the services by hand below.",
+      pdfFailed: "Owed couldn't open that file. Try another file, or paste the text instead.",
+      aboutTitle: 'About your child',
+      fChild: "Child's name", fSchool: 'School', fIepDate: 'IEP meeting date',
+      fStart: 'Track services starting', fStartHint: '(when this IEP took effect)',
+      servicesTitle: 'Services the school promised',
+      noServices: 'No services yet. Paste your IEP above, or try the sample.',
+      addService: '+ Add a service by hand', newService: 'New service',
+      nextCheckins: 'Next: weekly check-ins →',
+      remove: 'Remove', fixSummary: 'Fix anything Owed got wrong',
+      fService: 'Service', fWho: "Who's in the session", optIndividual: 'One-on-one',
+      optGroupN: n => `Group of ${n}`, optGroup: 'Group (size not listed)',
+      fHowMany: 'How many', fEvery: 'Every', optWeek: 'week', optMonth: 'month', fMinutes: 'Minutes each',
+      review: {
+        periods: "The IEP gives this in class periods, so Owed assumed 45 minutes each. Change it if your school's periods are a different length.",
+        guessed: 'Owed guessed how long each session is. Check it against the IEP.',
+        custom: 'Fill in the details from the IEP.',
+      },
+      needServices: "First add your child's services in step 1.", goStep1: 'Go to step 1',
+      whenStart: 'When did this IEP start?',
+      whenStartHelp: 'Owed needs a start date to know which weeks to ask about.',
+      continue: 'Continue',
+      checkinsHelp: "Once a week, tap how many sessions your child actually had. Ask your child, check the school's notes, or ask the therapist. In the real app, a free reminder pops up on your phone every Friday.",
+      weeksDone: (a, b) => `${a} of ${b} weeks done`,
+      thisWeek: 'This week', someMissed: 'Some missed', allGood: 'All good',
+      everything: '✓ Everything happened', closed: 'School closed all week',
+      closedNote: 'School was closed, so no sessions were expected.',
+      howMany: 'How many sessions happened?',
+      expected: n => `${n} expected`, expectedShort: n => `${n} expected (short first week)`,
+      noWeeks: 'No weeks to fill in yet.',
+      monthlyTitle: 'Monthly services',
+      monthlyHelp: 'Some services happen once or twice a month. Count the sessions for the whole month.',
+      thisMonth: 'This month, so far',
+      nextOwed: "Next: see what's owed →",
+      yourChild: 'your child',
+      owedSub: (who, n, range) => `of services ${who} is owed so far: ${n} missed ${plural(n, 'session', 'sessions')}${range}.`,
+      owedRange: (a, b) => `, ${a} to ${b}`,
+      nothingMissed: 'Nothing missed yet',
+      nothingMissedSub: "Your record doesn't show any missed sessions. Keep doing the weekly check-ins.",
+      blanks: (w, m) => [w && `${w} ${plural(w, 'week', 'weeks')}`, m && `${m} ${plural(m, 'month', 'months')}`].filter(Boolean).join(' and ') +
+        (w + m === 1 ? " isn't filled in yet, so it isn't counted." : " aren't filled in yet, so they aren't counted."),
+      fillThem: 'Fill in now',
+      byService: 'By service', owedAmt: t => `${t} owed`, allDelivered: 'All delivered', nothingYet: 'Nothing recorded yet',
+      happened: (d, r, m) => `${d} of ${r} sessions happened` + (m ? ` · ${m} missed` : ''),
+      whenMissed: 'When sessions were missed', thWhen: 'When', thWhat: 'What was missed',
+      missedN: (name, n) => `${name}: ${n} missed`,
+      nextLetter: 'Next: write the letter →',
+      letterTitle: 'Letter to the school',
+      nothingToAsk: "Your record doesn't show any missed sessions, so there's nothing to ask for yet. If sessions are missed, Owed will draft the letter for you.",
+      goCheckins: 'Go to check-ins',
+      letterHelp: 'Owed wrote this from your record. Read it, change anything you want, then email it to the principal and keep a copy. A written request leaves a paper trail.',
+      letterLang: 'Write the letter in',
+      letterLangTip: '',
+      fParentName: 'Your name', fParentContact: 'Your phone or email',
+      optRsa: "Ask for an RSA if the school can't provide a therapy",
+      optRsaHint: '(in NYC, a Related Services Authorization lets you use an outside therapist)',
+      optMeeting: 'Ask for a meeting',
+      edited: 'You edited this letter, so Owed won\'t change it. Click "Start the letter over" to apply new details.',
+      copy: 'Copy letter', copied: 'Copied ✓', print: 'Print letter + session record', reset: 'Start the letter over',
+      legal: 'Owed is not a lawyer, and this is not legal advice. For a hearing or a legal question, talk to a special education advocate or attorney. In NYC, groups like INCLUDEnyc and Advocates for Children of New York help families for free.',
+      recordTitle: name => `Session record: ${name}`,
+      recordMeta: (school, iep, by, date) => `School: ${school} · IEP dated ${iep} · Recorded by ${by}, ${date}`,
+      myChild: 'my child', parentWord: 'parent',
+      servicesInIep: 'Services in the IEP', summary: 'Summary',
+      thService: 'Service', thExpected: 'Sessions expected', thHeld: 'Sessions held', thMissed: 'Missed', thTime: 'Time missed',
+      total: 'Total', weekByWeek: 'Week by week', monthByMonth: 'Month by month', thWeek: 'Week', thMonth: 'Month',
+      notRecorded: 'Not recorded', closedCell: 'Closed', xOfY: (v, e) => `${v} of ${e}`,
+      pasteFirst: 'Paste the text of the IEP first, or try the sample.',
+      confirmReread: 'Read the IEP again? This replaces your services list. Your check-ins stay saved.',
+      found: n => `Owed found ${n} ${plural(n, 'service', 'services')}. Check each one below against the IEP.`,
+      foundNone: "Owed couldn't find any services in that text. You can add them by hand below.",
+      confirmSample: 'Load the sample? This replaces what you have entered.',
+      sampleLoaded: 'Sample loaded for a made-up student, Maya. Example check-ins are already filled in, so you can click through every step.',
+      confirmRemove: name => `Remove ${name}?`,
+      footer: 'Owed is a prototype. It is not a lawyer and does not give legal advice. Everything you enter is saved only in this browser.',
+      clearAll: 'Clear all my data',
+      confirmClear: 'Delete everything you entered in Owed on this device?',
+      yes: 'Yes, continue', cancel: 'Cancel',
+      copyCase: 'Copy letter + session record', copyFailed: "Couldn't copy. Select the text and copy it by hand.",
+      backup: 'Back up my record', restore: 'Restore from backup',
+      backupDone: "Backup copied. Paste it into an email to yourself or a private note. Keep it private, because it includes your child's services.",
+      restorePrompt: "Paste your backup text below. This replaces what's in Owed now.",
+      restoreBtn: 'Restore', restoreBad: "That doesn't look like an Owed backup.", restored: 'Your record is restored.',
+      noStorage: 'This browser is not saving your answers. Use "Back up my record" at the bottom of the page to keep a copy.',
+      stepFocus: 'Focus time',
+      focusIntro: 'For your child: short work rounds, one small step at a time, and a break after each round.',
+      focusWhat: 'What are you working on?',
+      chips: ['Homework', 'Reading', 'Speech practice', 'Clean up'],
+      focusSteps: 'Break it into small steps',
+      focusStepsHint: 'Small steps are easier to start. For example: "Write my name," "Do question 1."',
+      stepPlaceholder: n => `Step ${n}`, addStep: '+ Add a step',
+      focusHowLong: 'How long?', minutesShort: n => `${n} min`,
+      startFocus: 'Start focus time ▶',
+      now: 'Now', keepGoing: 'Keep going on your task!', stepDone: 'Done ✓',
+      pause: 'Pause', resume: 'Keep going', stop: 'Stop', paused: 'Paused',
+      earned: 'Great focus! You earned a star.', allStepsDone: 'You finished every step!', timeUp: "Time's up!",
+      takeBreak: 'Take a 3-minute break', breakTime: 'Break time',
+      breakIdeas: ['Do 10 jumping jacks', 'Get a drink of water', 'Stretch up high like a tree', 'Take 5 slow, deep breaths', 'Walk around the room and come back', 'Shake your hands and wiggle your toes'],
+      breakOver: 'Break is over. Ready for another round?', skipBreak: 'Skip the break',
+      nextRound: 'Start another round', finishToday: "I'm done for today",
+      starsToday: n => `${n} ${plural(n, 'star', 'stars')} today`, starsWeek: n => `${n} this week`,
+      tipsTitle: 'Tips for parents',
+      tips: ['Keep rounds short at first (5–10 minutes), then make them longer slowly.', 'Give one instruction at a time, and ask your child to say it back.', 'Praise effort right away: "You kept going even when it was hard."', 'Use the same time and a quiet place each day. Put phones and toys out of sight.', 'Let stars add up to a small reward you choose together.'],
+      focusNote: "Focus time uses simple habits that help many children focus: short work times, one step at a time, and breaks. It is not a treatment for ADHD. For ADHD support, talk with your child's doctor and school.",
+      promise1: 'Free for families', promise2: 'No account needed', promise3: 'Your data stays on your phone',
+      whyMissed: 'Why was it missed?',
+      reasons: { provider: 'Therapist absent', cancelled: 'Cancelled by school', student: 'My child was absent', unknown: "I don't know" },
+      excusedNote: (n, time) => `${n} ${plural(n, 'session was', 'sessions were')} missed because your child was absent (${time}). Those usually aren't owed, so they aren't counted.`,
+      typeMakeup: 'Ask for make-up sessions', typeRecords: "Ask for the school's session records",
+      recordsHelp: "The school keeps its own record of every session in a system called SESIS. Ask for a copy, then compare it with your record in Owed.",
+      rsaTip: "If you get an RSA: search for a DOE-approved therapist in the DOE's InPro directory. Only sign a therapist's invoice for sessions that really happened.",
+      inproLink: 'Find a provider (NYC DOE)',
+      practiceTitle: 'Practice words',
+      practiceIntro: "For speech practice at home. Use the words or sounds your child's speech therapist gave you.",
+      practiceWordsLabel: 'Words to practice (separate them with commas)', practicePlaceholder: 'sun, sock, bus, house',
+      repsLabel: 'Say each word', repsN: n => `${n} ${plural(n, 'time', 'times')}`,
+      voiceLabel: 'Read words aloud in', startPractice: 'Start practice ▶', needWords: 'Type at least one word first.',
+      hearIt: '🔊 Hear it', goodTry: 'Good try! ⭐', skipWord: 'Skip',
+      sayIt: n => `Say it ${n} ${plural(n, 'time', 'times')}`, wordOf: (i, n) => `Word ${i} of ${n}`,
+      practiceDone: n => `You practiced ${n} ${plural(n, 'word', 'words')}!`, practiceAgain: 'Practice again', earnedPractice: 'Great practice! You earned a star.',
+      grownUpTaps: 'A grown-up taps after the child says the word:', triedIt: 'Tried it ✓', tryAgain: 'Try again ↺',
+      soundsLabel: 'Or pick a sound to practice:', realRecording: '🎙 Real recording', computerVoice: '🤖 Computer voice',
+      credits: 'Recording credits',
+      creditsIntro: 'Word recordings come from Wikimedia Commons, shared under Creative Commons licenses. Thank you to these speakers:',
+      close: 'Close',
+      askTherapist: '✉️ Ask the therapist for help',
+      noteIntro: "Send this note to your child's speech therapist by email or the school's messaging app. The English version is for the therapist.",
+      noteTranslation: 'What it says in your language:', copyNote: 'Copy English note',
+      noteCopied: 'Note copied. Paste it into an email or message to the therapist.',
+      micTitle: '🎤 Microphone check',
+      micHelp: 'For when no grown-up can listen. Your child says each word, and Owed checks if it sounds right. Close tries still count.',
+      micTurnOn: 'Turn on microphone check', micOnLabel: 'Microphone check is on', micTurnOff: 'Turn off',
+      micConsent: 'Turn on the microphone check? When your child taps 🎤, the browser listens and turns the word into text. To do this, Chrome sends the sound to Google, and Safari sends it to Apple. Owed only keeps a score. Each try is also recorded and saved only on this phone, so you can listen later. You can turn this off at any time.',
+      micYes: 'Yes, turn it on', micNo: 'Not now',
+      micBlocked: "Owed couldn't use the microphone. Check that the browser is allowed to use it, or use the grown-up check.",
+      micNeedsSite: 'The microphone check works when Owed is on its own website. It is not available in this preview.',
+      micBrowser: 'The microphone check works in Chrome, Edge or Safari.',
+      sayMic: '🎤 Say it', listening: '👂 Listening…', heard: w => `I heard: "${w}"`,
+      fbGreat: 'Great job! ✓', fbClose: 'So close! Listen and try again.', fbFar: "Let's listen first, then try again.",
+      fbNone: "I didn't hear anything. Tap 🎤 and say the word.", fbNetwork: "Owed couldn't reach the speech service. Check the internet and try again.", fbMoveOn: "Nice effort! Let's try the next one.", nextWord: 'Next word ▶',
+      useGrownUp: 'Use grown-up check instead',
+      reviewBtn: '🎧 Listen to practice', reviewTitle: 'Practice recordings', reviewHelp: 'Each try is saved only on this phone.',
+      reviewEmpty: 'No recordings yet.', deleteAll: 'Delete all recordings', confirmDeleteRec: 'Delete all practice recordings on this phone?',
+      levelLabel: { great: 'Great', close: 'Close', far: 'Try again' },
+      practiceNote: 'Practice words supports speech therapy. It does not replace it. Ask the therapist which words and sounds to practice.',
+    },
+    es: {
+      htmlLang: 'es',
+      title: 'Owed: registro de servicios del IEP (prototipo)',
+      tagline: 'Sepa qué servicios del IEP recibió su hijo y cuáles todavía le deben.',
+      badge: 'Prototipo · sus datos se quedan en este aparato',
+      langLabel: 'Idioma',
+      stepIep: 'El IEP de su hijo', stepCheckins: 'Registro semanal', stepOwed: 'Lo que le deben', stepLetter: 'Carta a la escuela',
+      readTitle: 'Leer su IEP',
+      readHelp: 'Suba el IEP de su hijo en PDF o pegue su texto. Lo más importante es la página que enumera los servicios, como terapia del habla u ocupacional. Owed encuentra cada sesión que la escuela prometió.',
+      placeholder: 'Pegue aquí el texto del IEP…',
+      btnRead: 'Leer mi IEP', btnSample: 'Probar con un IEP de ejemplo',
+      protoNote: 'Nota: esta versión de prueba lee el texto del IEP en inglés con reglas simples. La aplicación real usaría IA para leer fotos del teléfono e IEP en otros idiomas.',
+      btnUpload: 'Subir IEP (PDF)', uploadNote: 'El archivo se lee en este aparato. Nunca se sube a ningún lugar.',
+      reading: 'Leyendo su IEP…',
+      pdfScanned: 'Este PDF parece un escaneo (una imagen de las páginas), así que Owed todavía no puede leer las palabras. Agregue los servicios a mano abajo.',
+      pdfFailed: 'Owed no pudo abrir ese archivo. Pruebe con otro archivo o pegue el texto.',
+      aboutTitle: 'Sobre su hijo',
+      fChild: 'Nombre del niño o la niña', fSchool: 'Escuela', fIepDate: 'Fecha de la reunión del IEP',
+      fStart: 'Registrar servicios desde', fStartHint: '(cuando este IEP entró en vigor)',
+      servicesTitle: 'Servicios que la escuela prometió',
+      noServices: 'Todavía no hay servicios. Pegue su IEP arriba o pruebe el ejemplo.',
+      addService: '+ Agregar un servicio a mano', newService: 'Servicio nuevo',
+      nextCheckins: 'Siguiente: registro semanal →',
+      remove: 'Quitar', fixSummary: 'Corregir lo que Owed leyó mal',
+      fService: 'Servicio', fWho: 'Quién participa', optIndividual: 'Individual',
+      optGroupN: n => `Grupo de ${n}`, optGroup: 'Grupo (sin tamaño)',
+      fHowMany: 'Cuántas veces', fEvery: 'Cada', optWeek: 'semana', optMonth: 'mes', fMinutes: 'Minutos cada vez',
+      review: {
+        periods: 'El IEP lo indica en períodos de clase, así que Owed supuso 45 minutos cada uno. Cámbielo si los períodos de su escuela duran otro tiempo.',
+        guessed: 'Owed calculó cuánto dura cada sesión. Compárelo con el IEP.',
+        custom: 'Complete los datos según el IEP.',
+      },
+      needServices: 'Primero agregue los servicios de su hijo en el paso 1.', goStep1: 'Ir al paso 1',
+      whenStart: '¿Cuándo empezó este IEP?',
+      whenStartHelp: 'Owed necesita una fecha de inicio para saber de qué semanas preguntar.',
+      continue: 'Continuar',
+      checkinsHelp: 'Una vez a la semana, toque cuántas sesiones tuvo realmente su hijo. Pregúntele a su hijo, revise las notas de la escuela o pregúntele al terapeuta. En la aplicación real, cada viernes le llegará un recordatorio gratis al teléfono.',
+      weeksDone: (a, b) => `${a} de ${b} semanas listas`,
+      thisWeek: 'Esta semana', someMissed: 'Faltaron algunas', allGood: 'Todo bien',
+      everything: '✓ Se dio todo', closed: 'Escuela cerrada toda la semana',
+      closedNote: 'La escuela estuvo cerrada, así que no se esperaban sesiones.',
+      howMany: '¿Cuántas sesiones hubo?',
+      expected: n => `se esperaban ${n}`, expectedShort: n => `se esperaban ${n} (primera semana corta)`,
+      noWeeks: 'Todavía no hay semanas para registrar.',
+      monthlyTitle: 'Servicios mensuales',
+      monthlyHelp: 'Algunos servicios se dan una o dos veces al mes. Cuente las sesiones de todo el mes.',
+      thisMonth: 'Este mes, hasta ahora',
+      nextOwed: 'Siguiente: ver lo que le deben →',
+      yourChild: 'su hijo',
+      owedSub: (who, n, range) => `de servicios que le deben a ${who} hasta ahora: ${n} ${plural(n, 'sesión perdida', 'sesiones perdidas')}${range}.`,
+      owedRange: (a, b) => `, del ${a} al ${b}`,
+      nothingMissed: 'Todavía no falta nada',
+      nothingMissedSub: 'Su registro no muestra sesiones perdidas. Siga haciendo el registro semanal.',
+      blanks: (w, m) => (w + m === 1 ? 'Falta ' : 'Faltan ') + [w && `${w} ${plural(w, 'semana', 'semanas')}`, m && `${m} ${plural(m, 'mes', 'meses')}`].filter(Boolean).join(' y ') +
+        (w + m === 1 ? ' por registrar, así que no se cuenta.' : ' por registrar, así que no se cuentan.'),
+      fillThem: 'Completar ahora',
+      byService: 'Por servicio', owedAmt: t => `Le deben ${t}`, allDelivered: 'Todo recibido', nothingYet: 'Nada registrado todavía',
+      happened: (d, r, m) => `Se dieron ${d} de ${r} sesiones` + (m ? ` · faltaron ${m}` : ''),
+      whenMissed: 'Cuándo faltaron sesiones', thWhen: 'Cuándo', thWhat: 'Qué faltó',
+      missedN: (name, n) => `${name}: ${plural(n, 'faltó', 'faltaron')} ${n}`,
+      nextLetter: 'Siguiente: escribir la carta →',
+      letterTitle: 'Carta a la escuela',
+      nothingToAsk: 'Su registro no muestra sesiones perdidas, así que todavía no hay nada que pedir. Si faltan sesiones, Owed le preparará la carta.',
+      goCheckins: 'Ir al registro semanal',
+      letterHelp: 'Owed escribió esta carta con su registro. Léala, cambie lo que quiera, envíela por correo electrónico al director y guarde una copia. Una petición por escrito deja constancia.',
+      letterLang: 'Idioma de la carta',
+      letterLangTip: 'Consejo: el personal de la escuela suele leer mejor en inglés. Puede leer la carta en español y luego enviar la versión en inglés.',
+      fParentName: 'Su nombre', fParentContact: 'Su teléfono o correo electrónico',
+      optRsa: 'Pedir una RSA si la escuela no puede dar una terapia',
+      optRsaHint: '(en NYC, la Autorización de Servicios Relacionados le permite usar un terapeuta externo)',
+      optMeeting: 'Pedir una reunión',
+      edited: 'Usted editó esta carta, así que Owed no la cambiará. Toque “Empezar la carta de nuevo” para aplicar los cambios.',
+      copy: 'Copiar carta', copied: 'Copiada ✓', print: 'Imprimir carta y registro', reset: 'Empezar la carta de nuevo',
+      legal: 'Owed no es un abogado y esto no es asesoría legal. Para una audiencia o una pregunta legal, hable con un defensor o abogado de educación especial. En NYC, grupos como INCLUDEnyc y Advocates for Children of New York ayudan gratis a las familias.',
+      recordTitle: name => `Registro de sesiones: ${name}`,
+      recordMeta: (school, iep, by, date) => `Escuela: ${school} · IEP con fecha del ${iep} · Registrado por ${by}, ${date}`,
+      myChild: 'mi hijo/a', parentWord: 'padre/madre',
+      servicesInIep: 'Servicios del IEP', summary: 'Resumen',
+      thService: 'Servicio', thExpected: 'Sesiones esperadas', thHeld: 'Sesiones dadas', thMissed: 'Faltaron', thTime: 'Tiempo perdido',
+      total: 'Total', weekByWeek: 'Semana por semana', monthByMonth: 'Mes por mes', thWeek: 'Semana', thMonth: 'Mes',
+      notRecorded: 'Sin registrar', closedCell: 'Cerrada', xOfY: (v, e) => `${v} de ${e}`,
+      pasteFirst: 'Primero pegue el texto del IEP o pruebe el ejemplo.',
+      confirmReread: '¿Leer el IEP otra vez? Esto reemplaza su lista de servicios. Sus registros se guardan.',
+      found: n => `Owed encontró ${n} ${plural(n, 'servicio', 'servicios')}. Compare cada uno con el IEP.`,
+      foundNone: 'Owed no encontró servicios en ese texto. Puede agregarlos a mano abajo.',
+      confirmSample: '¿Cargar el ejemplo? Esto reemplaza lo que ha escrito.',
+      sampleLoaded: 'Se cargó el ejemplo de una estudiante inventada, Maya. Ya hay registros de ejemplo, así que puede recorrer todos los pasos.',
+      confirmRemove: name => `¿Quitar ${name}?`,
+      footer: 'Owed es un prototipo. No es un abogado y no da asesoría legal. Todo lo que escriba se guarda solo en este navegador.',
+      clearAll: 'Borrar todos mis datos',
+      confirmClear: '¿Borrar todo lo que escribió en Owed en este aparato?',
+      yes: 'Sí, continuar', cancel: 'Cancelar',
+      copyCase: 'Copiar carta y registro', copyFailed: 'No se pudo copiar. Seleccione el texto y cópielo a mano.',
+      backup: 'Hacer copia de seguridad', restore: 'Restaurar copia',
+      backupDone: 'Copia de seguridad copiada. Péguela en un correo para usted mismo o en una nota privada. Manténgala privada, porque incluye los servicios de su hijo.',
+      restorePrompt: 'Pegue abajo el texto de su copia de seguridad. Esto reemplaza lo que hay ahora en Owed.',
+      restoreBtn: 'Restaurar', restoreBad: 'Eso no parece una copia de seguridad de Owed.', restored: 'Se restauró su registro.',
+      noStorage: 'Este navegador no está guardando sus respuestas. Use “Hacer copia de seguridad” al final de la página para guardar una copia.',
+      stepFocus: 'Hora de enfocarse',
+      focusIntro: 'Para su hijo: rondas cortas de trabajo, un pasito a la vez y un descanso después de cada ronda.',
+      focusWhat: '¿En qué vas a trabajar?',
+      chips: ['Tarea', 'Lectura', 'Práctica del habla', 'Ordenar'],
+      focusSteps: 'Divídelo en pasos pequeños',
+      focusStepsHint: 'Los pasos pequeños son más fáciles de empezar. Por ejemplo: "Escribir mi nombre", "Hacer la pregunta 1".',
+      stepPlaceholder: n => `Paso ${n}`, addStep: '+ Agregar un paso',
+      focusHowLong: '¿Cuánto tiempo?', minutesShort: n => `${n} min`,
+      startFocus: 'Empezar ▶',
+      now: 'Ahora', keepGoing: '¡Sigue con tu tarea!', stepDone: 'Listo ✓',
+      pause: 'Pausa', resume: 'Seguir', stop: 'Parar', paused: 'En pausa',
+      earned: '¡Muy bien! Ganaste una estrella.', allStepsDone: '¡Terminaste todos los pasos!', timeUp: '¡Se acabó el tiempo!',
+      takeBreak: 'Descansar 3 minutos', breakTime: 'Hora del descanso',
+      breakIdeas: ['Haz 10 saltos de tijera', 'Toma un poco de agua', 'Estírate hacia arriba como un árbol', 'Respira lento y profundo 5 veces', 'Camina por el cuarto y regresa', 'Sacude las manos y mueve los dedos de los pies'],
+      breakOver: 'Se acabó el descanso. ¿Listo para otra ronda?', skipBreak: 'Saltar el descanso',
+      nextRound: 'Empezar otra ronda', finishToday: 'Terminé por hoy',
+      starsToday: n => `${n} ${plural(n, 'estrella', 'estrellas')} hoy`, starsWeek: n => `${n} esta semana`,
+      tipsTitle: 'Consejos para padres',
+      tips: ['Empiece con rondas cortas (5 a 10 minutos) y alárguelas poco a poco.', 'Dé una instrucción a la vez y pida a su hijo que la repita.', 'Elogie el esfuerzo enseguida: "Seguiste aunque era difícil."', 'Use la misma hora y un lugar tranquilo cada día. Guarde teléfonos y juguetes.', 'Deje que las estrellas sumen para un pequeño premio que elijan juntos.'],
+      focusNote: 'Hora de enfocarse usa hábitos sencillos que ayudan a muchos niños a concentrarse: ratos cortos de trabajo, un paso a la vez y descansos. No es un tratamiento para el TDAH. Para apoyo con el TDAH, hable con el médico y la escuela de su hijo.',
+      promise1: 'Gratis para las familias', promise2: 'No necesita cuenta', promise3: 'Sus datos se quedan en su teléfono',
+      whyMissed: '¿Por qué faltó?',
+      reasons: { provider: 'Faltó el terapeuta', cancelled: 'La escuela la canceló', student: 'Mi hijo faltó', unknown: 'No sé' },
+      excusedNote: (n, time) => `${n} ${plural(n, 'sesión se perdió', 'sesiones se perdieron')} porque su hijo faltó (${time}). Normalmente no se deben reponer, así que no se cuentan.`,
+      typeMakeup: 'Pedir sesiones de reposición', typeRecords: 'Pedir los registros de sesiones de la escuela',
+      recordsHelp: 'La escuela guarda su propio registro de cada sesión en un sistema llamado SESIS. Pida una copia y compárela con su registro en Owed.',
+      rsaTip: 'Si recibe una RSA: busque un terapeuta aprobado por el DOE en el directorio InPro del DOE. Firme la factura del terapeuta solo por las sesiones que de verdad se dieron.',
+      inproLink: 'Buscar un proveedor (DOE de NYC)',
+      practiceTitle: 'Practicar palabras',
+      practiceIntro: 'Para practicar el habla en casa. Use las palabras o sonidos que le dio el terapeuta del habla de su hijo.',
+      practiceWordsLabel: 'Palabras para practicar (sepárelas con comas)', practicePlaceholder: 'sol, sopa, oso, mesa',
+      repsLabel: 'Decir cada palabra', repsN: n => `${n} ${plural(n, 'vez', 'veces')}`,
+      voiceLabel: 'Leer las palabras en voz alta en', startPractice: 'Empezar a practicar ▶', needWords: 'Primero escriba al menos una palabra.',
+      hearIt: '🔊 Escuchar', goodTry: '¡Buen intento! ⭐', skipWord: 'Saltar',
+      sayIt: n => `Dilo ${n} ${plural(n, 'vez', 'veces')}`, wordOf: (i, n) => `Palabra ${i} de ${n}`,
+      practiceDone: n => `¡Practicaste ${n} ${plural(n, 'palabra', 'palabras')}!`, practiceAgain: 'Practicar otra vez', earnedPractice: '¡Muy buena práctica! Ganaste una estrella.',
+      grownUpTaps: 'Un adulto toca después de que el niño diga la palabra:', triedIt: 'Lo intentó ✓', tryAgain: 'Otra vez ↺',
+      soundsLabel: 'O elija un sonido para practicar:', realRecording: '🎙 Grabación real', computerVoice: '🤖 Voz de computadora',
+      credits: 'Créditos de las grabaciones',
+      creditsIntro: 'Las grabaciones de palabras vienen de Wikimedia Commons y se comparten con licencias Creative Commons. Gracias a estas personas:',
+      close: 'Cerrar',
+      askTherapist: '✉️ Pedir ayuda al terapeuta',
+      noteIntro: 'Envíe esta nota al terapeuta del habla de su hijo por correo electrónico o por la aplicación de mensajes de la escuela. La versión en inglés es para el terapeuta.',
+      noteTranslation: 'Lo que dice en su idioma:', copyNote: 'Copiar la nota en inglés',
+      noteCopied: 'Nota copiada. Péguela en un correo o mensaje al terapeuta.',
+      micTitle: '🎤 Revisión con micrófono',
+      micHelp: 'Para cuando ningún adulto puede escuchar. Su hijo dice cada palabra y Owed revisa si suena bien. Los intentos parecidos también cuentan.',
+      micTurnOn: 'Activar la revisión con micrófono', micOnLabel: 'La revisión con micrófono está activada', micTurnOff: 'Desactivar',
+      micConsent: '¿Activar la revisión con micrófono? Cuando su hijo toque 🎤, el navegador escucha y convierte la palabra en texto. Para hacerlo, Chrome envía el sonido a Google y Safari a Apple. Owed solo guarda un puntaje. Cada intento también se graba y se guarda solo en este teléfono para que usted lo escuche después. Puede desactivarlo cuando quiera.',
+      micYes: 'Sí, activarla', micNo: 'Ahora no',
+      micBlocked: 'Owed no pudo usar el micrófono. Revise que el navegador tenga permiso para usarlo, o use la revisión de un adulto.',
+      micNeedsSite: 'La revisión con micrófono funciona cuando Owed está en su propio sitio web. No está disponible en esta vista previa.',
+      micBrowser: 'La revisión con micrófono funciona en Chrome, Edge o Safari.',
+      sayMic: '🎤 Dilo', listening: '👂 Escuchando…', heard: w => `Escuché: "${w}"`,
+      fbGreat: '¡Muy bien! ✓', fbClose: '¡Casi! Escucha y vuelve a intentarlo.', fbFar: 'Primero escucha y luego inténtalo otra vez.',
+      fbNone: 'No escuché nada. Toca 🎤 y di la palabra.', fbNetwork: 'Owed no pudo conectarse al servicio de voz. Revise la conexión a internet e inténtelo otra vez.', fbMoveOn: '¡Buen esfuerzo! Vamos con la siguiente.', nextWord: 'Siguiente palabra ▶',
+      useGrownUp: 'Usar la revisión de un adulto',
+      reviewBtn: '🎧 Escuchar la práctica', reviewTitle: 'Grabaciones de práctica', reviewHelp: 'Cada intento se guarda solo en este teléfono.',
+      reviewEmpty: 'Todavía no hay grabaciones.', deleteAll: 'Borrar todas las grabaciones', confirmDeleteRec: '¿Borrar todas las grabaciones de práctica de este teléfono?',
+      levelLabel: { great: 'Muy bien', close: 'Casi', far: 'Otra vez' },
+      practiceNote: 'Practicar palabras apoya la terapia del habla, pero no la reemplaza. Pregúntele al terapeuta qué palabras y sonidos practicar.',
+    },
+    zh: {
+      htmlLang: 'zh-Hans',
+      title: 'Owed：IEP服务记录（原型版）',
+      tagline: '了解孩子得到了哪些IEP服务，学校还欠孩子哪些。',
+      badge: '原型版 · 数据只保存在本设备上',
+      langLabel: '语言',
+      stepIep: '孩子的IEP', stepCheckins: '每周记录', stepOwed: '欠了多少', stepLetter: '给学校的信',
+      readTitle: '读取IEP',
+      readHelp: '上传孩子IEP的PDF文件，或粘贴文字。最重要的是列出服务的那一页，例如言语治疗或职能治疗。Owed会找出学校承诺的每一项服务。',
+      placeholder: '在此粘贴IEP文字…',
+      btnRead: '读取我的IEP', btnSample: '试用示例IEP',
+      protoNote: '说明：这个原型版用简单规则读取英文IEP文字。正式版会用AI读取手机照片和其他语言的IEP。',
+      btnUpload: '上传IEP（PDF）', uploadNote: '文件只在本设备上读取，不会上传到任何地方。',
+      reading: '正在读取IEP…',
+      pdfScanned: '这个PDF看起来是扫描件（页面图片），Owed暂时无法读取文字。请在下方手动添加服务。',
+      pdfFailed: 'Owed无法打开这个文件。请换一个文件，或直接粘贴文字。',
+      aboutTitle: '孩子的资料',
+      fChild: '孩子姓名', fSchool: '学校', fIepDate: 'IEP会议日期',
+      fStart: '开始记录日期', fStartHint: '（IEP开始生效的日期）',
+      servicesTitle: '学校承诺的服务',
+      noServices: '还没有服务。请在上方粘贴IEP，或试用示例。',
+      addService: '+ 手动添加服务', newService: '新服务',
+      nextCheckins: '下一步：每周记录 →',
+      remove: '删除', fixSummary: '修改读错的内容',
+      fService: '服务', fWho: '上课形式', optIndividual: '一对一',
+      optGroupN: n => `${n}人小组`, optGroup: '小组（未注明人数）',
+      fHowMany: '次数', fEvery: '每', optWeek: '周', optMonth: '月', fMinutes: '每次分钟数',
+      review: {
+        periods: 'IEP以课节计算，Owed假设每节45分钟。如果学校每节课的时长不同，请修改。',
+        guessed: 'Owed估计了每次课的时长，请对照IEP检查。',
+        custom: '请按照IEP填写详细内容。',
+      },
+      needServices: '请先在第1步添加孩子的服务。', goStep1: '前往第1步',
+      whenStart: '这份IEP从什么时候开始？',
+      whenStartHelp: 'Owed需要开始日期，才知道要记录哪几周。',
+      continue: '继续',
+      checkinsHelp: '每周一次，点选孩子实际上了几次课。可以问孩子、看学校的记录，或问治疗师。正式版每周五会在手机上免费提醒您。',
+      weeksDone: (a, b) => `已完成${a}/${b}周`,
+      thisWeek: '本周', someMissed: '有缺课', allGood: '全部完成',
+      everything: '✓ 全部都上了', closed: '学校整周放假',
+      closedNote: '学校放假，本周不需要上课。',
+      howMany: '实际上了几次？',
+      expected: n => `应上${n}次`, expectedShort: n => `应上${n}次（第一周不完整）`,
+      noWeeks: '暂时没有需要记录的周。',
+      monthlyTitle: '每月服务',
+      monthlyHelp: '有些服务每月只有一两次。请记录整个月的次数。',
+      thisMonth: '本月（目前为止）',
+      nextOwed: '下一步：查看欠了多少 →',
+      yourChild: '孩子',
+      owedSub: (who, n, range) => `是学校目前欠${who}的服务时间，共缺${n}次课${range}。`,
+      owedRange: (a, b) => `（${a}至${b}）`,
+      nothingMissed: '目前没有缺课',
+      nothingMissedSub: '您的记录中没有缺课。请继续每周记录。',
+      blanks: (w, m) => '还有' + [w && `${w}周`, m && `${m}个月`].filter(Boolean).join('和') + '没有记录，所以没有计算在内。',
+      fillThem: '去填写',
+      byService: '按服务', owedAmt: t => `欠${t}`, allDelivered: '全部完成', nothingYet: '还没有记录',
+      happened: (d, r, m) => `应上${r}次，实际上了${d}次` + (m ? ` · 缺${m}次` : ''),
+      whenMissed: '缺课时间', thWhen: '时间', thWhat: '缺了什么',
+      missedN: (name, n) => `${name}：缺${n}次`,
+      nextLetter: '下一步：写信 →',
+      letterTitle: '给学校的信',
+      nothingToAsk: '您的记录中没有缺课，所以暂时不需要写信。如果有缺课，Owed会帮您起草信件。',
+      goCheckins: '前往每周记录',
+      letterHelp: 'Owed根据您的记录写好了这封信。请阅读并修改，然后用电子邮件发给校长，并保留一份副本。书面请求可以留下记录。',
+      letterLang: '信件语言',
+      letterLangTip: '提示：学校职员通常最熟悉英文。您可以先用中文阅读信件，再发送英文版本。',
+      fParentName: '您的姓名', fParentContact: '您的电话或电子邮箱',
+      optRsa: '如果学校无法提供治疗，要求签发RSA',
+      optRsaHint: '（在纽约市，相关服务授权书让您可以找校外治疗师）',
+      optMeeting: '要求开会',
+      edited: '您已修改这封信，Owed不会再自动更改。点击“重新开始写信”即可套用新的资料。',
+      copy: '复制信件', copied: '已复制 ✓', print: '打印信件和课时记录', reset: '重新开始写信',
+      legal: 'Owed不是律师，这也不是法律建议。如需听证或有法律问题，请咨询特殊教育倡导员或律师。在纽约市，INCLUDEnyc和Advocates for Children of New York等机构为家庭提供免费帮助。',
+      recordTitle: name => `课时记录：${name}`,
+      recordMeta: (school, iep, by, date) => `学校：${school} · IEP日期：${iep} · 记录人：${by}，${date}`,
+      myChild: '我的孩子', parentWord: '家长',
+      servicesInIep: 'IEP中的服务', summary: '总结',
+      thService: '服务', thExpected: '应上次数', thHeld: '实际次数', thMissed: '缺课次数', thTime: '缺少时间',
+      total: '合计', weekByWeek: '每周记录', monthByMonth: '每月记录', thWeek: '周', thMonth: '月份',
+      notRecorded: '未记录', closedCell: '放假', xOfY: (v, e) => `${v}/${e}`,
+      pasteFirst: '请先粘贴IEP文字，或试用示例。',
+      confirmReread: '要重新读取IEP吗？这会替换服务列表，但每周记录会保留。',
+      found: n => `Owed找到了${n}项服务。请对照IEP逐项检查。`,
+      foundNone: 'Owed在这段文字中没有找到服务。您可以在下方手动添加。',
+      confirmSample: '要载入示例吗？这会替换您已输入的内容。',
+      sampleLoaded: '已载入虚构学生Maya的示例，并已填好示例记录，您可以逐步查看每个步骤。',
+      confirmRemove: name => `要删除“${name}”吗？`,
+      footer: 'Owed是原型版，不是律师，也不提供法律建议。您输入的所有内容只保存在这个浏览器中。',
+      clearAll: '清除我的所有数据',
+      confirmClear: '要删除您在本设备上输入的所有Owed内容吗？',
+      yes: '确定', cancel: '取消',
+      copyCase: '复制信件和课时记录', copyFailed: '无法复制。请选中文字后手动复制。',
+      backup: '备份我的记录', restore: '从备份恢复',
+      backupDone: '备份已复制。请粘贴到发给自己的邮件或私人备忘录中保存。备份包含孩子的服务资料，请妥善保管。',
+      restorePrompt: '请在下方粘贴备份文字。这会替换Owed中现有的内容。',
+      restoreBtn: '恢复', restoreBad: '这看起来不是Owed的备份。', restored: '记录已恢复。',
+      noStorage: '这个浏览器没有保存您的回答。请使用页面底部的“备份我的记录”保存一份副本。',
+      stepFocus: '专注时间',
+      focusIntro: '给孩子使用：短时间专注，一次只做一小步，每轮结束后休息一下。',
+      focusWhat: '你要做什么？',
+      chips: ['作业', '阅读', '说话练习', '整理东西'],
+      focusSteps: '分成几个小步骤',
+      focusStepsHint: '小步骤更容易开始。例如：“写名字”、“做第1题”。',
+      stepPlaceholder: n => `第${n}步`, addStep: '+ 添加步骤',
+      focusHowLong: '多长时间？', minutesShort: n => `${n}分钟`,
+      startFocus: '开始专注 ▶',
+      now: '现在', keepGoing: '继续做你的事！', stepDone: '完成 ✓',
+      pause: '暂停', resume: '继续', stop: '停止', paused: '已暂停',
+      earned: '太棒了！你得到了一颗星星。', allStepsDone: '你完成了所有步骤！', timeUp: '时间到！',
+      takeBreak: '休息3分钟', breakTime: '休息时间',
+      breakIdeas: ['做10个开合跳', '喝点水', '像大树一样向上伸展', '慢慢地深呼吸5次', '在房间里走一圈再回来', '甩甩手，动动脚趾'],
+      breakOver: '休息结束。准备好再来一轮了吗？', skipBreak: '跳过休息',
+      nextRound: '再来一轮', finishToday: '今天结束了',
+      starsToday: n => `今天${n}颗星星`, starsWeek: n => `本周${n}颗`,
+      tipsTitle: '给家长的建议',
+      tips: ['开始时每轮时间要短（5–10分钟），再慢慢延长。', '一次只给一个指令，并让孩子复述一遍。', '马上称赞孩子的努力：“很难的时候你也坚持下来了。”', '每天固定时间、在安静的地方做。把手机和玩具收起来。', '让星星累积起来，换一个你们一起选的小奖励。'],
+      focusNote: '“专注时间”使用一些简单的习惯来帮助孩子集中注意力：短时间专注、一次一小步、适时休息。它不是ADHD（注意力缺陷多动障碍）的治疗方法。如需ADHD方面的帮助，请咨询孩子的医生和学校。',
+      promise1: '对家庭免费', promise2: '无需注册账号', promise3: '数据只保存在您的手机上',
+      whyMissed: '为什么没上？',
+      reasons: { provider: '治疗师缺席', cancelled: '学校取消', student: '孩子缺席', unknown: '不知道' },
+      excusedNote: (n, time) => `有${n}次课因孩子缺席而没上（${time}）。这类缺课通常不需要补，所以没有计算在内。`,
+      typeMakeup: '要求补课', typeRecords: '索取学校的课时记录',
+      recordsHelp: '学校会在一个叫SESIS的系统里记录每一次课。请索取一份副本，再和您在Owed里的记录对照。',
+      rsaTip: '如果您拿到RSA：可以在教育局的InPro名录中查找经教育局批准的治疗师。只为真正上过的课在治疗师的账单上签字。',
+      inproLink: '查找服务提供者（纽约市教育局）',
+      practiceTitle: '练习词语',
+      practiceIntro: '在家练习说话。请使用孩子的言语治疗师给您的词语或发音。',
+      practiceWordsLabel: '要练习的词语（用逗号隔开）', practicePlaceholder: '书，水，山，手',
+      repsLabel: '每个词说', repsN: n => `${n}遍`,
+      voiceLabel: '朗读语言', startPractice: '开始练习 ▶', needWords: '请先输入至少一个词语。',
+      hearIt: '🔊 听一听', goodTry: '说得好！⭐', skipWord: '跳过',
+      sayIt: n => `说${n}遍`, wordOf: (i, n) => `第${i}个，共${n}个`,
+      practiceDone: n => `你练习了${n}个词语！`, practiceAgain: '再练一次', earnedPractice: '练得真好！你得到了一颗星星。',
+      grownUpTaps: '孩子说完后，由大人点按：', triedIt: '说了 ✓', tryAgain: '再试一次 ↺',
+      soundsLabel: '或选择要练习的发音：', realRecording: '🎙 真人录音', computerVoice: '🤖 电脑语音',
+      credits: '录音来源',
+      creditsIntro: '词语录音来自Wikimedia Commons，按知识共享（Creative Commons）许可分享。感谢以下录音者：',
+      close: '关闭',
+      askTherapist: '✉️ 向治疗师求助',
+      noteIntro: '请用电子邮件或学校的通讯应用把这封短信发给孩子的言语治疗师。英文版是给治疗师看的。',
+      noteTranslation: '中文意思：', copyNote: '复制英文版',
+      noteCopied: '已复制。请粘贴到发给治疗师的邮件或消息中。',
+      micTitle: '🎤 麦克风检查',
+      micHelp: '大人没空听的时候使用。孩子说出每个词，Owed会检查听起来对不对。差不多的也算。',
+      micTurnOn: '打开麦克风检查', micOnLabel: '麦克风检查已打开', micTurnOff: '关闭',
+      micConsent: '要打开麦克风检查吗？孩子点按🎤时，浏览器会听并把词语转成文字。为此，Chrome会把声音发送给Google，Safari会发送给Apple。Owed只保存分数。每次练习也会录音，只保存在这部手机上，方便您之后收听。您可以随时关闭。',
+      micYes: '好，打开', micNo: '暂时不用',
+      micBlocked: 'Owed无法使用麦克风。请检查浏览器是否允许使用麦克风，或改用大人检查。',
+      micNeedsSite: '当Owed放在自己的网站上时才能使用麦克风检查。这个预览版暂不支持。',
+      micBrowser: '麦克风检查可在Chrome、Edge或Safari中使用。',
+      sayMic: '🎤 说一说', listening: '👂 正在听…', heard: w => `我听到的是：“${w}”`,
+      fbGreat: '太棒了！✓', fbClose: '差一点！听一听再试一次。', fbFar: '先听一听，再试一次。',
+      fbNone: '我没有听到声音。请点按🎤说出这个词。', fbNetwork: 'Owed无法连接语音服务。请检查网络后再试。', fbMoveOn: '很努力了！我们练下一个吧。', nextWord: '下一个 ▶',
+      useGrownUp: '改用大人检查',
+      reviewBtn: '🎧 听练习录音', reviewTitle: '练习录音', reviewHelp: '每次练习只保存在这部手机上。',
+      reviewEmpty: '还没有录音。', deleteAll: '删除所有录音', confirmDeleteRec: '要删除这部手机上的所有练习录音吗？',
+      levelLabel: { great: '很好', close: '差一点', far: '再试一次' },
+      practiceNote: '“练习词语”是言语治疗的辅助，不能代替治疗。请向治疗师询问要练习哪些词语和发音。',
+    },
+  };
+
+  // ------------------------------------------------------------------ State
+  function browserLang() {
+    const l = (navigator.language || 'en').toLowerCase();
+    return l.startsWith('es') ? 'es' : l.startsWith('zh') ? 'zh' : 'en';
+  }
+  const blank = lang => ({
+    tab: 'iep',
+    lang: lang || browserLang(),
+    child: { name: '', school: '', iepDate: '', startDate: '', parentName: '', parentContact: '' },
+    iepText: '',
+    services: [],
+    weeks: {},
+    months: {},
+    monthReasons: {},
+    letter: { lang: 'en', type: 'makeup', rsa: true, meeting: true, drafts: { makeup: null, records: null } },
+    focus: { task: '', steps: [{ text: '', done: false }, { text: '', done: false }], minutes: 10, stars: {}, words: '', reps: 3, voice: 'en' },
+  });
+
+  // Hosted pages may block storage. The app still works; it just can't remember.
+  let storageOK = true;
+  try { localStorage.setItem(STORE + '-test', '1'); localStorage.removeItem(STORE + '-test'); } catch { storageOK = false; }
+  const EMBEDDED = (() => { try { return window.self !== window.top; } catch { return true; } })();
+
+  function normalize(saved) {
+    const b = blank();
+    const s = { ...b, ...saved, child: { ...b.child, ...saved.child }, letter: { ...b.letter, ...saved.letter }, focus: { ...b.focus, ...saved.focus } };
+    if (!Array.isArray(s.focus.steps)) s.focus.steps = b.focus.steps;
+    if (!s.monthReasons || typeof s.monthReasons !== 'object') s.monthReasons = {};
+    if (!s.letter.drafts || typeof s.letter.drafts !== 'object') {
+      // Older saves kept one edited letter as text + edited.
+      s.letter.drafts = { makeup: s.letter.edited && s.letter.text ? s.letter.text : null, records: null };
+    }
+    delete s.letter.edited; delete s.letter.text;
+    if (!s.focus.stars || typeof s.focus.stars !== 'object') s.focus.stars = {};
+    s.services = Array.isArray(s.services) ? s.services : [];
+    s.weeks = s.weeks && typeof s.weeks === 'object' ? s.weeks : {};
+    s.months = s.months && typeof s.months === 'object' ? s.months : {};
+    // Older saves stored review notes as English sentences; keep only the codes.
+    s.services.forEach(x => { x.review = (x.review || []).filter(r => r in I18N.en.review); });
+    return s;
+  }
+  function load() {
+    try {
+      const raw = storageOK ? localStorage.getItem(STORE) : null;
+      return raw ? normalize(JSON.parse(raw)) : blank();
+    } catch { return blank(); }
+  }
+  let state = load();
+  let notice = null; // one-time message shown at the top of the current step
+
+  const L = () => state.lang;
+  function t(key, ...args) {
+    const v = I18N[L()][key] ?? I18N.en[key];
+    return typeof v === 'function' ? v(...args) : v;
+  }
+  function save() {
+    if (!storageOK) return;
+    try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { storageOK = false; renderChrome(); }
+  }
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const range = n => Array.from({ length: n + 1 }, (_, i) => i);
+  const data = () => ({ ...state, startDate: state.child.startDate });
+  const owed = () => C.computeOwed(state.services, data(), TODAY);
+  const weekly = () => state.services.filter(s => s.per === 'week');
+  const monthly = () => state.services.filter(s => s.per === 'month');
+  const name = s => C.displayName(s, L());
+  const firstName = () => (state.child.name || '').trim().split(/\s+/)[0] || t('yourChild');
+
+  function field(bind, label, value, type = 'text', hint = '') {
+    return `<label class="f">${esc(label)}${hint ? ` <span class="hint">${esc(hint)}</span>` : ''}
+      <input type="${type}" data-bind="${bind}" value="${esc(value)}"></label>`;
+  }
+  function noticeHTML() {
+    if (!notice) return '';
+    const html = `<div class="notice ${notice.kind}">${esc(t(notice.key, ...(notice.args || [])))}</div>`;
+    notice = null;
+    return html;
+  }
+  const reviewText = s => (s.review || []).map(code => t('review')[code]).filter(Boolean).join(' ');
+
+  // ------------------------------------------------------------------ Step 1
+  function serviceCard(s) {
+    const opts = (list, cur) => list.map(([v, txt]) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${esc(txt)}</option>`).join('');
+    const groups = [['Individual', t('optIndividual')], ...[2, 3, 4, 5].map(n => [`Group of ${n}`, t('optGroupN', n)]), ['Group', t('optGroup')]];
+    const flag = reviewText(s);
+    return `
+      <div class="svc" data-card="${esc(s.id)}">
+        <div class="svc-head">
+          <div>
+            <div class="svc-name">${esc(name(s))}</div>
+            ${C.servicePlain(s, L()) ? `<div class="svc-plain">${esc(C.servicePlain(s, L()))}</div>` : ''}
+          </div>
+          <button class="icon" data-action="remove-service" data-sid="${esc(s.id)}" aria-label="${esc(t('remove'))}: ${esc(name(s))}" title="${esc(t('remove'))}">✕</button>
+        </div>
+        <p class="svc-sum">${esc(C.describeService(s, L()))}</p>
+        ${flag ? `<p class="flag">⚠ ${esc(flag)}</p>` : ''}
+        <details ${flag ? 'open' : ''}>
+          <summary>${esc(t('fixSummary'))}</summary>
+          <div class="grid5">
+            <label class="f">${esc(t('fService'))}<input type="text" data-sfield="name" data-sid="${esc(s.id)}" value="${esc(C.serviceName(s, L()))}"></label>
+            <label class="f">${esc(t('fWho'))}<select data-sfield="group" data-sid="${esc(s.id)}">${opts(groups, s.group)}</select></label>
+            <label class="f">${esc(t('fHowMany'))}<input type="number" min="1" max="10" data-sfield="freq" data-sid="${esc(s.id)}" value="${esc(s.freq)}"></label>
+            <label class="f">${esc(t('fEvery'))}<select data-sfield="per" data-sid="${esc(s.id)}">${opts([['week', t('optWeek')], ['month', t('optMonth')]], s.per)}</select></label>
+            <label class="f">${esc(t('fMinutes'))}<input type="number" min="5" max="240" step="5" data-sfield="minutes" data-sid="${esc(s.id)}" value="${esc(s.minutes)}"></label>
+          </div>
+        </details>
+      </div>`;
+  }
+
+  function viewIEP() {
+    const c = state.child;
+    const list = state.services.length
+      ? state.services.map(serviceCard).join('')
+      : `<div class="empty">${esc(t('noServices'))}</div>`;
+    return `
+      ${noticeHTML()}
+      <div class="promise">${[t('promise1'), t('promise2'), t('promise3')].map(x => `<span>✓ ${esc(x)}</span>`).join('')}</div>
+      <section class="card">
+        <h2>${esc(t('readTitle'))}</h2>
+        <p class="muted">${esc(t('readHelp'))}</p>
+        <textarea id="iepText" rows="7" placeholder="${esc(t('placeholder'))}">${esc(state.iepText)}</textarea>
+        <div class="row">
+          <label class="btn primary" style="display:inline-flex;align-items:center;gap:6px">
+            <input type="file" id="iepFile" accept=".pdf,.txt,application/pdf,text/plain" hidden>⬆ ${esc(t('btnUpload'))}</label>
+          <button class="btn" data-action="parse">${esc(t('btnRead'))}</button>
+          <button class="btn" data-action="sample">${esc(t('btnSample'))}</button>
+        </div>
+        <p class="fine" style="margin-top:8px">🔒 ${esc(t('uploadNote'))}</p>
+        <p class="fine">${esc(t('protoNote'))}</p>
+      </section>
+
+      <section class="card">
+        <h2>${esc(t('aboutTitle'))}</h2>
+        <div class="grid">
+          ${field('child.name', t('fChild'), c.name)}
+          ${field('child.school', t('fSchool'), c.school)}
+          ${field('child.iepDate', t('fIepDate'), c.iepDate, 'date')}
+          ${field('child.startDate', t('fStart'), c.startDate, 'date', t('fStartHint'))}
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>${esc(t('servicesTitle'))}${state.services.length ? ` <span class="muted">· ${state.services.length}</span>` : ''}</h2>
+        ${list}
+        <div class="row"><button class="btn small" data-action="add-service">${esc(t('addService'))}</button></div>
+      </section>
+      ${state.services.length ? `<div class="next"><button class="btn primary" data-tab="checkins">${esc(t('nextCheckins'))}</button></div>` : ''}`;
+  }
+
+  // ------------------------------------------------------------------ Step 2
+  function segButtons(max, value, attrs) {
+    return `<div class="seg" role="group">${range(max).map(n =>
+      `<button class="${value === n ? 'on' : ''} ${n === max ? 'full' : ''}" data-action="log" ${attrs} data-n="${n}" aria-pressed="${value === n}">${n}</button>`
+    ).join('')}</div>`;
+  }
+
+  function reasonChips(attrs, current) {
+    const R = t('reasons');
+    return `<div class="reasons"><span class="muted">${esc(t('whyMissed'))}</span>${['provider', 'cancelled', 'student', 'unknown'].map(k =>
+      `<button class="chip ${(current || 'unknown') === k ? 'on' : ''}" data-action="reason" ${attrs} data-r="${k}" aria-pressed="${(current || 'unknown') === k}">${esc(R[k])}</button>`).join('')}</div>`;
+  }
+
+  function goStep1Card() {
+    return `<section class="card"><div class="empty">${esc(t('needServices'))}</div>
+      <div class="row" style="justify-content:center"><button class="btn primary" data-tab="iep">${esc(t('goStep1'))}</button></div></section>`;
+  }
+
+  function viewCheckins() {
+    if (!state.services.length) return goStep1Card();
+    const start = state.child.startDate;
+    if (!start) {
+      return `<section class="card"><h2>${esc(t('whenStart'))}</h2>
+        <p class="muted">${esc(t('whenStartHelp'))}</p>
+        <div class="grid">${field('child.startDate', t('fStart'), '', 'date')}</div>
+        <div class="row"><button class="btn primary" data-action="refresh">${esc(t('continue'))}</button></div></section>`;
+    }
+    const r = owed();
+    const total = r.totals.answeredWeeks + r.totals.unansweredWeeks;
+    const pct = total ? Math.round((r.totals.answeredWeeks / total) * 100) : 0;
+    const thisWeek = C.mondayOf(TODAY);
+    const ws = weekly();
+
+    const weekCards = r.weeks.slice().reverse().map(w => {
+      const st = state.weeks[w] || { closed: false, logs: {} };
+      const asked = ws.filter(s => C.expectedFor(s, w, start) > 0);
+      if (!asked.length) return '';
+      const done = st.closed || asked.every(s => st.logs && st.logs[s.id] != null);
+      const missed = !st.closed && asked.some(s => st.logs && st.logs[s.id] != null && st.logs[s.id] < C.expectedFor(s, w, start));
+      const status = w === thisWeek ? `<span class="pill">${esc(t('thisWeek'))}</span>`
+        : done ? (missed ? `<span class="pill">${esc(t('someMissed'))}</span>` : `<span class="pill ok">${esc(t('allGood'))}</span>`) : '';
+      const rows = st.closed
+        ? `<p class="muted" style="margin:10px 0 0">${esc(t('closedNote'))}</p>`
+        : asked.map(s => {
+            const exp = C.expectedFor(s, w, start);
+            const v = st.logs ? st.logs[s.id] : undefined;
+            const note = exp < s.freq ? t('expectedShort', exp) : t('expected', exp);
+            const attrs = `data-week="${w}" data-sid="${esc(s.id)}"`;
+            return `<div class="q">
+              <div class="q-label">${esc(name(s))}<small>${esc(t('howMany'))} ${esc(note)}</small></div>
+              ${segButtons(exp, v, attrs)}
+            </div>${v != null && v < exp ? reasonChips(attrs, st.reasons && st.reasons[s.id]) : ''}`;
+          }).join('');
+      return `<div class="week ${done ? 'done' : ''}">
+        <div class="week-head">
+          <div><strong>${esc(C.weekTitle(w, L()))}</strong>${status}</div>
+          <div class="week-actions">
+            ${st.closed ? '' : `<button class="btn small" data-action="all-happened" data-week="${w}">${esc(t('everything'))}</button>`}
+            <label class="check"><input type="checkbox" data-action="closed" data-week="${w}" ${st.closed ? 'checked' : ''}> ${esc(t('closed'))}</label>
+          </div>
+        </div>
+        ${rows}
+      </div>`;
+    }).join('');
+
+    const ms = monthly();
+    const curMonth = TODAY.slice(0, 7);
+    const monthCards = ms.length ? `
+      <section class="card">
+        <h2>${esc(t('monthlyTitle'))}</h2>
+        <p class="muted">${esc(t('monthlyHelp'))}</p>
+        ${r.months.slice().reverse().map(mk => `
+          <div class="week">
+            <div class="week-head"><div><strong>${esc(C.monthLabel(mk, L()))}</strong>${mk === curMonth ? `<span class="pill">${esc(t('thisMonth'))}</span>` : ''}</div></div>
+            ${ms.map(s => {
+              const v = state.months[mk] ? state.months[mk][s.id] : undefined;
+              const attrs = `data-month="${mk}" data-sid="${esc(s.id)}"`;
+              const why = state.monthReasons[mk] && state.monthReasons[mk][s.id];
+              return `<div class="q">
+                <div class="q-label">${esc(name(s))}<small>${esc(t('howMany'))} ${esc(t('expected', s.freq))}</small></div>
+                ${segButtons(s.freq, v, attrs)}
+              </div>${mk !== curMonth && v != null && v < s.freq ? reasonChips(attrs, why) : ''}`;
+            }).join('')}
+          </div>`).join('')}
+      </section>` : '';
+
+    return `
+      ${noticeHTML()}
+      <section class="card">
+        <h2>${esc(t('stepCheckins'))}</h2>
+        <p class="muted">${esc(t('checkinsHelp'))}</p>
+        <div class="progress"><div class="meter"><span style="width:${pct}%"></span></div><div class="muted" style="font-size:14px">${esc(t('weeksDone', r.totals.answeredWeeks, total))}</div></div>
+        ${weekCards || `<div class="empty">${esc(t('noWeeks'))}</div>`}
+      </section>
+      ${monthCards}
+      <div class="next"><button class="btn primary" data-tab="owed">${esc(t('nextOwed'))}</button></div>`;
+  }
+
+  // ------------------------------------------------------------------ Step 3
+  function viewOwed() {
+    if (!state.services.length) return goStep1Card();
+    const r = owed();
+    const tt = r.totals;
+    const span = tt.from && tt.to ? t('owedRange', C.longDate(tt.from, L()), C.longDate(tt.to, L())) : '';
+    const hero = tt.missedMinutes > 0
+      ? `<div class="hero warn">
+          <div class="big">${esc(C.fmtMinutes(tt.missedMinutes, L()))}</div>
+          <div class="sub">${esc(t('owedSub', firstName(), tt.missedSessions, span))}</div>
+        </div>`
+      : `<div class="hero ok"><div class="big">${esc(t('nothingMissed'))}</div><div class="sub">${esc(t('nothingMissedSub'))}</div></div>`;
+
+    const blankNote = tt.unansweredWeeks + tt.unansweredMonths
+      ? `<div class="notice warn">${esc(t('blanks', tt.unansweredWeeks, tt.unansweredMonths))} <button class="btn small" data-tab="checkins" style="margin-left:6px">${esc(t('fillThem'))}</button></div>`
+      : '';
+
+    const bars = r.rows.map(row => {
+      const pct = row.required ? Math.round((row.delivered / row.required) * 100) : 100;
+      const right = row.missedSessions ? t('owedAmt', C.fmtMinutes(row.missedMinutes, L())) : (row.required ? t('allDelivered') : t('nothingYet'));
+      return `<div class="bar-row">
+        <div class="bar-top"><div>${esc(name(row.service))}</div>
+          <div class="owed ${row.missedSessions ? '' : 'zero'}">${esc(right)}</div></div>
+        <div class="bar"><span style="width:${pct}%"></span></div>
+        <div class="bar-sub">${esc(t('happened', row.delivered, row.required, row.missedSessions))}</div>
+      </div>`;
+    }).join('');
+
+    // Group misses by week or month for the timeline.
+    const byPeriod = {};
+    r.rows.forEach(row => row.misses.forEach(m => {
+      (byPeriod[m.period] = byPeriod[m.period] || { label: C.periodLabel(m, L()), items: [] })
+        .items.push(t('missedN', name(row.service), m.missed) + (m.reason && m.reason !== 'unknown' ? ` · ${t('reasons')[m.reason]}` : ''));
+    }));
+    const periods = Object.keys(byPeriod).sort();
+    const timeline = periods.length ? `
+      <section class="card">
+        <h2>${esc(t('whenMissed'))}</h2>
+        <table class="log"><thead><tr><th>${esc(t('thWhen'))}</th><th>${esc(t('thWhat'))}</th></tr></thead><tbody>
+          ${periods.map(p => `<tr><td style="white-space:nowrap">${esc(byPeriod[p].label)}</td><td>${byPeriod[p].items.map(esc).join('<br>')}</td></tr>`).join('')}
+        </tbody></table>
+      </section>` : '';
+
+    return `
+      ${hero}
+      ${blankNote}
+      ${tt.excusedSessions ? `<div class="notice info">${esc(t('excusedNote', tt.excusedSessions, C.fmtMinutes(tt.excusedMinutes, L())))}</div>` : ''}
+      <section class="card"><h2>${esc(t('byService'))}</h2>${bars}</section>
+      ${timeline}
+      ${tt.missedMinutes > 0 ? `<div class="next"><button class="btn primary" data-tab="letter">${esc(t('nextLetter'))}</button></div>` : ''}`;
+  }
+
+  // ------------------------------------------------------------------ Step 4
+  const letterType = () => (state.letter.type === 'records' ? 'records' : 'makeup');
+  const generatedLetter = () => (letterType() === 'records'
+    ? C.buildRecordsRequest(data(), owed(), TODAY, state.letter.lang)
+    : C.buildLetter(data(), owed(), TODAY, state.letter.lang));
+  const INPRO = 'https://www.schools.nyc.gov/learning/special-education/supports-and-services/related-services/finding-an-independent-provider';
+
+  function viewLetter() {
+    const r = owed();
+    const type = letterType();
+    const c = state.child;
+    const typeBtn = (code, label) =>
+      `<button class="${type === code ? 'on' : ''}" data-action="letter-type" data-code="${code}" aria-pressed="${type === code}">${esc(label)}</button>`;
+    const chooser = `<div class="seg-lang" role="group" style="flex-wrap:wrap">${typeBtn('makeup', t('typeMakeup'))}${typeBtn('records', t('typeRecords'))}</div>`;
+    if (type === 'makeup' && r.totals.missedMinutes <= 0) {
+      return `${noticeHTML()}<section class="card"><h2>${esc(t('letterTitle'))}</h2>${chooser}
+        <p class="muted" style="margin-top:12px">${esc(t('nothingToAsk'))}</p>
+        <div class="row"><button class="btn primary" data-tab="checkins">${esc(t('goCheckins'))}</button></div></section>`;
+    }
+    const langBtn = (code, label, htmlLang) =>
+      `<button class="${state.letter.lang === code ? 'on' : ''}" data-action="letter-lang" data-code="${code}" lang="${htmlLang}" aria-pressed="${state.letter.lang === code}">${label}</button>`;
+    return `
+      ${noticeHTML()}
+      <section class="card">
+        <h2>${esc(t('letterTitle'))}</h2>
+        ${chooser}
+        <p class="muted" style="margin-top:12px">${esc(type === 'records' ? t('recordsHelp') : t('letterHelp'))}</p>
+        <div class="grid">
+          ${field('child.parentName', t('fParentName'), c.parentName)}
+          ${field('child.parentContact', t('fParentContact'), c.parentContact)}
+        </div>
+        ${type === 'makeup' ? `
+        <label class="check"><input type="checkbox" data-lopt="rsa" ${state.letter.rsa ? 'checked' : ''}>
+          <span>${esc(t('optRsa'))} <span class="muted">${esc(t('optRsaHint'))}</span></span></label>
+        <label class="check"><input type="checkbox" data-lopt="meeting" ${state.letter.meeting ? 'checked' : ''}> <span>${esc(t('optMeeting'))}</span></label>` : ''}
+        <div style="margin-top:14px">
+          <div class="f" style="font-size:13.5px;font-weight:600">${esc(t('letterLang'))}</div>
+          <div class="seg-lang" role="group">${langBtn('en', 'English', 'en')}${langBtn('es', 'Español', 'es')}${langBtn('zh', '中文', 'zh-Hans')}</div>
+          ${t('letterLangTip') ? `<p class="fine" style="margin-top:6px">${esc(t('letterLangTip'))}</p>` : ''}
+        </div>
+        <div id="letterHint"></div>
+        <textarea id="letterText" rows="22" style="margin-top:12px"></textarea>
+        <div class="row">
+          <button class="btn primary" data-action="copy">${esc(t('copy'))}</button>
+          ${type === 'makeup' ? `<button class="btn" data-action="copy-case">${esc(t('copyCase'))} <span class="pro">PRO</span></button>
+          ${EMBEDDED ? '' : `<button class="btn" data-action="print">${esc(t('print'))} <span class="pro">PRO</span></button>`}` : ''}
+          <button class="btn ghost" data-action="reset-letter">${esc(t('reset'))}</button>
+        </div>
+        ${type === 'makeup' && state.letter.rsa ? `<div class="notice info">${esc(t('rsaTip'))} <a href="${INPRO}" target="_blank" rel="noopener">${esc(t('inproLink'))} ↗</a></div>` : ''}
+        <p class="fine">${esc(t('legal'))}</p>
+      </section>`;
+  }
+
+  function fillLetter() {
+    const ta = document.getElementById('letterText');
+    if (!ta) return;
+    const draft = state.letter.drafts[letterType()];
+    ta.value = draft != null ? draft : generatedLetter();
+    ta.lang = I18N[state.letter.lang].htmlLang;
+    const hint = document.getElementById('letterHint');
+    if (hint) hint.innerHTML = draft != null
+      ? `<div class="notice info" style="margin-bottom:0">${esc(t('edited'))}</div>` : '';
+  }
+
+  // ------------------------------------------------------------------ Print
+  // The session record prints in the same language as the letter it goes with.
+  function printCaseFile() {
+    const lg = state.letter.lang;
+    const P = (key, ...args) => { const v = I18N[lg][key]; return typeof v === 'function' ? v(...args) : v; };
+    const r = owed();
+    const ta = document.getElementById('letterText');
+    const letter = ta ? ta.value : generatedLetter();
+    const start = state.child.startDate;
+    const ws = weekly();
+    const ms = monthly();
+    const cell = (v, e) => `<td>${v == null ? esc(P('notRecorded')) : esc(P('xOfY', v, e))}</td>`;
+    const weekRows = r.weeks.map(w => {
+      const st = state.weeks[w] || {};
+      const cells = ws.map(s => {
+        const exp = C.expectedFor(s, w, start);
+        if (!exp) return '<td>—</td>';
+        if (st.closed) return `<td>${esc(P('closedCell'))}</td>`;
+        return cell(st.logs ? st.logs[s.id] : undefined, exp);
+      }).join('');
+      return `<tr><td>${esc(C.weekLabel(w, lg))}</td>${cells}</tr>`;
+    }).join('');
+    const monthRows = r.months.map(mk => `<tr><td>${esc(C.monthLabel(mk, lg))}</td>${ms.map(s =>
+      cell(state.months[mk] ? state.months[mk][s.id] : undefined, s.freq)).join('')}</tr>`).join('');
+
+    const area = document.getElementById('print-area');
+    area.lang = I18N[lg].htmlLang;
+    area.innerHTML = `
+      <pre>${esc(letter)}</pre>
+      <div class="page-break"></div>
+      <h2>${esc(P('recordTitle', state.child.name || P('myChild')))}</h2>
+      <p>${esc(P('recordMeta', state.child.school || '—', C.longDate(state.child.iepDate, lg) || '—', state.child.parentName || P('parentWord'), C.longDate(TODAY, lg)))}</p>
+      <h3>${esc(P('servicesInIep'))}</h3>
+      <ul>${state.services.map(s => `<li>${esc(C.displayName(s, lg))}: ${esc(C.describeService(s, lg))}</li>`).join('')}</ul>
+      <h3>${esc(P('summary'))}</h3>
+      <table><tr><th>${esc(P('thService'))}</th><th>${esc(P('thExpected'))}</th><th>${esc(P('thHeld'))}</th><th>${esc(P('thMissed'))}</th><th>${esc(P('thTime'))}</th></tr>
+        ${r.rows.map(row => `<tr><td>${esc(C.displayName(row.service, lg))}</td><td>${row.required}</td><td>${row.delivered}</td><td>${row.missedSessions}</td><td>${esc(C.fmtMinutes(row.missedMinutes, lg))}</td></tr>`).join('')}
+        <tr><th>${esc(P('total'))}</th><th></th><th></th><th>${r.totals.missedSessions}</th><th>${esc(C.fmtMinutes(r.totals.missedMinutes, lg))}</th></tr>
+      </table>
+      <h3 style="margin-top:14px">${esc(P('weekByWeek'))}</h3>
+      <table><tr><th>${esc(P('thWeek'))}</th>${ws.map(s => `<th>${esc(C.displayName(s, lg))}</th>`).join('')}</tr>${weekRows}</table>
+      ${ms.length ? `<h3 style="margin-top:14px">${esc(P('monthByMonth'))}</h3><table><tr><th>${esc(P('thMonth'))}</th>${ms.map(s => `<th>${esc(C.displayName(s, lg))}</th>`).join('')}</tr>${monthRows}</table>` : ''}`;
+    window.print();
+  }
+
+  // ------------------------------------------------------------------ Focus time (for the child)
+  const RING = 2 * Math.PI * 100; // circumference of the timer ring
+  const BREAK_MS = 3 * 60 * 1000;
+  let run = null; // { phase: 'work'|'done'|'break'|'breakOver', total, endsAt, pausedLeft, reason, idea }
+  let ticker = null;
+
+  const F = () => state.focus;
+  const currentStep = () => F().steps.findIndex(x => x.text.trim() && !x.done);
+  function starsOn(dateISO) { return F().stars[dateISO] || 0; }
+  function starsThisWeek() {
+    const mon = C.mondayOf(TODAY);
+    return Object.entries(F().stars).filter(([d]) => d >= mon && d <= TODAY).reduce((a, [, n]) => a + n, 0);
+  }
+  const fmtClock = ms => { const sec = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; };
+  const leftMs = () => (run.pausedLeft != null ? run.pausedLeft : run.endsAt - Date.now());
+
+  function ringHTML(cls) {
+    return `<div class="ring ${cls}"><svg viewBox="0 0 220 220" aria-hidden="true">
+        <circle class="track" cx="110" cy="110" r="100" fill="none" stroke-width="14"/>
+        <circle class="bar" id="ringBar" cx="110" cy="110" r="100" fill="none" stroke-width="14" stroke-linecap="round"
+          stroke-dasharray="${RING}" stroke-dashoffset="0"/></svg>
+      <div class="time" id="ringTime" role="timer" aria-live="off">${fmtClock(leftMs())}</div></div>`;
+  }
+  function paintTimer() {
+    if (!run || (run.phase !== 'work' && run.phase !== 'break')) return;
+    const left = leftMs();
+    const bar = document.getElementById('ringBar'), time = document.getElementById('ringTime');
+    if (bar) bar.setAttribute('stroke-dashoffset', String(RING * (1 - Math.max(0, left) / run.total)));
+    if (time) time.textContent = fmtClock(left);
+    if (left <= 0) {
+      if (run.phase === 'work') finishRound('timeUp'); else { run = { phase: 'breakOver' }; stopTicker(); render(); }
+    }
+  }
+  function startTicker() { stopTicker(); ticker = setInterval(paintTimer, 250); }
+  function stopTicker() { if (ticker) { clearInterval(ticker); ticker = null; } }
+
+  function startRound() {
+    const f = F();
+    f.steps = f.steps.filter(x => x.text.trim());
+    const total = (Number(f.minutes) || 10) * 60 * 1000;
+    run = { phase: 'work', total, endsAt: Date.now() + total, pausedLeft: null };
+    save(); startTicker(); render();
+  }
+  function finishRound(reason) {
+    stopTicker();
+    F().stars[TODAY] = starsOn(TODAY) + 1;
+    run = { phase: 'done', reason, idea: Math.floor(Math.random() * t('breakIdeas').length) };
+    save(); render();
+  }
+  function startBreak() {
+    run = { phase: 'break', total: BREAK_MS, endsAt: Date.now() + BREAK_MS, pausedLeft: null, idea: run && run.idea };
+    startTicker(); render();
+  }
+  function endFocus() {
+    stopTicker(); run = null;
+    const f = F();
+    if (f.steps.length && f.steps.every(x => x.done)) f.steps = [{ text: '', done: false }, { text: '', done: false }];
+    save(); render();
+  }
+
+  // Practice words: one big word at a time, said a few times, with optional read-aloud.
+  let practice = null; // { words, i, rep, reps, said, done }
+  const VOICE_LANG = { en: 'en-US', es: 'es-US', zh: 'zh-CN' };
+  const canSpeak = (() => { try { return 'speechSynthesis' in window && typeof SpeechSynthesisUtterance === 'function'; } catch { return false; } })();
+  function speak(text) {
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = VOICE_LANG[F().voice] || 'en-US';
+      const v = bestVoice();
+      if (v) u.voice = v;
+      u.rate = 0.8;
+      window.speechSynthesis.speak(u);
+    } catch { /* read-aloud not available here */ }
+  }
+  // Real recordings (Wikimedia Commons), packaged in audio-data.js and loaded when Focus time opens.
+  let audioLib = window.OWED_AUDIO || null, audioLoading = false, audioFailed = false;
+  function loadAudio() {
+    if (audioLib || audioLoading || audioFailed) return;
+    audioLoading = true;
+    const sc = document.createElement('script');
+    sc.src = 'audio-data.js';
+    sc.onload = () => { audioLib = window.OWED_AUDIO || null; audioLoading = false; if (state.tab === 'focus') render(); };
+    sc.onerror = () => { audioLoading = false; audioFailed = true; };
+    document.head.appendChild(sc);
+  }
+  const clipFor = word => (audioLib && F().voice === 'en' ? audioLib.clips[String(word).toLowerCase()] : null);
+
+  // Pick the most natural voice the device has for the language, not just the default one.
+  function bestVoice() {
+    try {
+      const want = (VOICE_LANG[F().voice] || 'en-US').toLowerCase();
+      const voices = window.speechSynthesis.getVoices().filter(v => v.lang && v.lang.replace('_', '-').toLowerCase().startsWith(want.slice(0, 2)));
+      const score = v => (v.lang.replace('_', '-').toLowerCase() === want ? 4 : 0) +
+        (/google|enhanced|premium|natural|neural|siri|samantha|ava|allison|aaron|nicky/i.test(v.name) ? 3 : 0) + (v.localService ? 1 : 0);
+      return voices.sort((a, b) => score(b) - score(a))[0] || null;
+    } catch { return null; }
+  }
+  if (canSpeak) { try { window.speechSynthesis.getVoices(); } catch { /* voices load later */ } }
+
+  function playWord(word) {
+    const clip = clipFor(word);
+    if (clip) {
+      try { new Audio(clip).play().catch(() => speak(word)); return; } catch { /* fall back to the voice */ }
+    }
+    speak(word);
+  }
+
+  // Microphone check: the browser's speech recognition plus Owed's sound match (75% rule).
+  const micPossible = () => !!(window.SpeechRecognition || window.webkitSpeechRecognition) && !EMBEDDED &&
+    !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  const micOn = () => F().mic === 'on' && micPossible();
+
+  // Each try is recorded and kept only on this device (IndexedDB), for parents to replay.
+  function recDb() {
+    return new Promise((resolve, reject) => {
+      const r = indexedDB.open('owed-recordings', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('tries', { keyPath: 'id', autoIncrement: true });
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+  }
+  async function saveTry(entry) {
+    try {
+      const db = await recDb();
+      const store = db.transaction('tries', 'readwrite').objectStore('tries');
+      store.add({ ...entry, at: Date.now() });
+      const keys = await new Promise(res => { const q = store.getAllKeys(); q.onsuccess = () => res(q.result); q.onerror = () => res([]); });
+      keys.slice(0, Math.max(0, keys.length - 200)).forEach(k => store.delete(k)); // keep the latest 200
+    } catch { /* recordings are optional */ }
+  }
+  async function listTries() {
+    try {
+      const db = await recDb();
+      return await new Promise(res => {
+        const out = [];
+        const q = db.transaction('tries').objectStore('tries').openCursor(null, 'prev');
+        q.onsuccess = () => { const c = q.result; if (c && out.length < 60) { out.push(c.value); c.continue(); } else res(out); };
+        q.onerror = () => res(out);
+      });
+    } catch { return []; }
+  }
+  async function playTry(id) {
+    try {
+      const db = await recDb();
+      const item = await new Promise(res => { const q = db.transaction('tries').objectStore('tries').get(id); q.onsuccess = () => res(q.result); q.onerror = () => res(null); });
+      if (item && item.blob) new Audio(URL.createObjectURL(item.blob)).play().catch(() => {});
+    } catch { /* ignore */ }
+  }
+  async function clearTries() { try { (await recDb()).transaction('tries', 'readwrite').objectStore('tries').clear(); } catch { /* ignore */ } }
+
+  async function listen() {
+    if (!practice || practice.listening) return;
+    const word = practice.words[practice.i];
+    practice.listening = true; practice.fb = null; render();
+    let stream = null, recorder = null;
+    const chunks = [];
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+      recorder.start();
+    } catch (err) {
+      if (err && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) { micResult(word, 'blocked'); return; }
+    }
+    const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recog = new Rec();
+    recog.lang = VOICE_LANG[F().voice] || 'en-US';
+    recog.maxAlternatives = 5;
+    recog.interimResults = false;
+    recog.continuous = false;
+    let finished = false;
+    const finish = (alternatives, error) => {
+      if (finished) return;
+      finished = true;
+      const stopRecorder = () => new Promise(res => {
+        if (recorder && recorder.state !== 'inactive') { recorder.onstop = res; recorder.stop(); } else res();
+      });
+      stopRecorder().then(() => {
+        if (stream) stream.getTracks().forEach(tr => tr.stop());
+        if (error === 'not-allowed' || error === 'service-not-allowed' || error === 'audio-capture') { micResult(word, 'blocked'); return; }
+        if (error === 'network') { micResult(word, 'network'); return; }
+        if (!alternatives || !alternatives.length) { micResult(word, 'none'); return; }
+        const m = C.soundMatch(word, alternatives, F().voice);
+        const level = C.matchLevel(m.score);
+        if (chunks.length) saveTry({ word, score: m.score, heard: m.heard, level, date: TODAY, blob: new Blob(chunks, { type: (recorder && recorder.mimeType) || 'audio/webm' }) });
+        micResult(word, level, m);
+      });
+    };
+    recog.onresult = e => {
+      const r = e.results && e.results[0];
+      finish(r ? Array.from(r, a => a.transcript) : [], null);
+    };
+    recog.onerror = e => finish(null, e.error);
+    recog.onend = () => finish(null, 'no-speech');
+    try { recog.start(); } catch { finish(null, 'start-failed'); }
+    setTimeout(() => { try { recog.stop(); } catch { /* already stopped */ } }, 8000);
+  }
+
+  function micResult(word, level, m) {
+    if (!practice || practice.words[practice.i] !== word) return;
+    practice.listening = false;
+    if (level === 'blocked') {
+      F().mic = 'off'; save();
+      notice = { kind: 'warn', key: 'micBlocked' };
+      render(); return;
+    }
+    if (level === 'great') {
+      practice.failed = 0;
+      practiceStep(false);
+      practice.fb = { level, heard: m.heard };
+      render(); return;
+    }
+    if (level === 'none' || level === 'network') { practice.fb = { level }; render(); return; }
+    practice.failed = (practice.failed || 0) + 1;
+    practice.fb = { level: practice.failed >= 3 ? 'moveOn' : level, heard: m && m.heard };
+    render();
+    if (practice.failed < 3) setTimeout(() => playWord(word), 500); // let them hear the word again
+  }
+
+  const practiceWords = () => String(F().words || '').split(/[,，、;\n]+/).map(w => w.trim()).filter(Boolean).slice(0, 30);
+  function practiceStep(advanceOnly) {
+    if (!advanceOnly) { practice.rep++; practice.said++; }
+    if (advanceOnly || practice.rep >= practice.reps) { practice.i++; practice.rep = 0; }
+    if (practice.i >= practice.words.length) {
+      practice.done = true;
+      if (practice.said > 0) { F().stars[TODAY] = starsOn(TODAY) + 1; save(); }
+    }
+  }
+  function micControls() {
+    const fb = practice.fb;
+    const fbText = fb ? { great: t('fbGreat'), close: t('fbClose'), far: t('fbFar'), none: t('fbNone'), moveOn: t('fbMoveOn'), network: t('fbNetwork') }[fb.level] : '';
+    return `
+      ${fb ? `<div class="fb ${fb.level}" role="status">${esc(fbText)}${fb.heard ? `<small>${esc(t('heard', fb.heard))}</small>` : ''}</div>` : ''}
+      <div class="row" style="justify-content:center;margin-top:14px">
+        ${fb && fb.level === 'moveOn'
+          ? `<button class="btn primary big-btn" data-action="practice-skip">${esc(t('nextWord'))}</button>`
+          : `<button class="btn primary big-btn ${practice.listening ? 'listening' : ''}" data-action="practice-listen" ${practice.listening ? 'disabled' : ''}>${esc(practice.listening ? t('listening') : t('sayMic'))}</button>`}
+      </div>`;
+  }
+
+  function practiceView() {
+    if (practice.done) {
+      return `<section class="card focus-stage">
+        <div class="celebrate">${esc(t('practiceDone', practice.words.length))}</div>
+        ${practice.said > 0 ? `<p style="font-size:18px">${esc(t('earnedPractice'))}</p>` : ''}
+        <div class="stars" aria-hidden="true">${'⭐'.repeat(Math.min(starsOn(TODAY), 10)) || '☆'}</div>
+        <div class="row" style="justify-content:center;margin-top:18px">
+          <button class="btn primary big-btn" data-action="practice-again">${esc(t('practiceAgain'))}</button>
+          <button class="btn ghost" data-action="practice-stop">${esc(t('finishToday'))}</button>
+        </div>
+      </section>`;
+    }
+    const word = practice.words[practice.i];
+    const dots = Array.from({ length: practice.reps }, (_, k) => (k < practice.rep ? '●' : '○')).join(' ');
+    return `<section class="card focus-stage">
+      <div class="now-label">${esc(t('wordOf', practice.i + 1, practice.words.length))}</div>
+      <div class="practice-word" lang="${VOICE_LANG[F().voice] || 'en-US'}">${esc(word)}</div>
+      ${clipFor(word) || canSpeak ? `<button class="btn big-btn" data-action="practice-hear">${esc(t('hearIt'))}</button>
+        <div class="voice-tag">${esc(clipFor(word) ? t('realRecording') : t('computerVoice'))}</div>` : ''}
+      <p class="muted" style="margin:16px 0 4px">${esc(t('sayIt', practice.reps))}</p>
+      <div class="rep-dots" aria-label="${practice.rep} / ${practice.reps}">${dots}</div>
+      ${micOn() ? micControls() : `
+      <p class="muted" style="margin:14px 0 0;font-size:14px">👤 ${esc(t('grownUpTaps'))}</p>
+      <div class="row" style="justify-content:center;margin-top:8px">
+        <button class="btn primary big-btn" data-action="practice-good">${esc(t('triedIt'))}</button>
+        <button class="btn big-btn" data-action="practice-retry">${esc(t('tryAgain'))}</button>
+      </div>`}
+      <div class="row" style="justify-content:center">
+        <button class="btn" data-action="practice-skip">${esc(t('skipWord'))}</button>
+        <button class="btn ghost" data-action="practice-stop">${esc(t('stop'))}</button>
+      </div>
+    </section>`;
+  }
+
+  function viewFocus() {
+    const f = F();
+    loadAudio();
+    if (practice) return practiceView();
+    const starLine = `<div class="stars" aria-hidden="true">${'⭐'.repeat(Math.min(starsOn(TODAY), 10)) || '☆'}</div>
+      <div class="muted">${esc(t('starsToday', starsOn(TODAY)))} · ${esc(t('starsWeek', starsThisWeek()))}</div>`;
+
+    if (run && run.phase === 'work') {
+      const i = currentStep();
+      const stepText = i >= 0 ? f.steps[i].text : (f.task || t('keepGoing'));
+      return `<section class="card focus-stage">
+        ${ringHTML('')}
+        <div class="now-label" style="margin-top:16px">${esc(run.pausedLeft != null ? t('paused') : t('now'))}</div>
+        <div class="now-step">${esc(stepText)}</div>
+        ${i >= 0 ? `<button class="btn primary big-btn" data-action="focus-step-done">${esc(t('stepDone'))}</button>` : ''}
+        <div class="row" style="justify-content:center;margin-top:18px">
+          ${run.pausedLeft != null
+            ? `<button class="btn" data-action="focus-resume">${esc(t('resume'))}</button>`
+            : `<button class="btn" data-action="focus-pause">${esc(t('pause'))}</button>`}
+          <button class="btn ghost" data-action="focus-stop">${esc(t('stop'))}</button>
+        </div>
+      </section>`;
+    }
+    if (run && run.phase === 'done') {
+      return `<section class="card focus-stage">
+        <div class="celebrate">${esc(run.reason === 'allSteps' ? t('allStepsDone') : t('timeUp'))}</div>
+        <p style="font-size:18px">${esc(t('earned'))}</p>
+        ${starLine}
+        <div class="row" style="justify-content:center;margin-top:18px">
+          <button class="btn primary big-btn" data-action="focus-break">${esc(t('takeBreak'))}</button>
+        </div>
+        <div class="row" style="justify-content:center">
+          <button class="btn" data-action="focus-next">${esc(t('skipBreak'))}</button>
+          <button class="btn ghost" data-action="focus-finish">${esc(t('finishToday'))}</button>
+        </div>
+      </section>`;
+    }
+    if (run && run.phase === 'break') {
+      return `<section class="card focus-stage">
+        <div class="now-label">${esc(t('breakTime'))}</div>
+        <div class="break-idea">${esc(t('breakIdeas')[run.idea || 0])}</div>
+        ${ringHTML('break')}
+        <div class="row" style="justify-content:center;margin-top:18px">
+          <button class="btn" data-action="focus-next">${esc(t('nextRound'))}</button>
+          <button class="btn ghost" data-action="focus-finish">${esc(t('finishToday'))}</button>
+        </div>
+      </section>`;
+    }
+    if (run && run.phase === 'breakOver') {
+      return `<section class="card focus-stage">
+        <div class="celebrate">${esc(t('breakOver'))}</div>
+        ${starLine}
+        <div class="row" style="justify-content:center;margin-top:18px">
+          <button class="btn primary big-btn" data-action="focus-next">${esc(t('nextRound'))}</button>
+          <button class="btn ghost" data-action="focus-finish">${esc(t('finishToday'))}</button>
+        </div>
+      </section>`;
+    }
+
+    // Setup
+    const steps = f.steps.map((x, i) => `<div class="step-row ${x.done ? 'done' : ''}"><span class="n">${x.done ? '✓' : i + 1}</span>
+      <input type="text" data-fstep="${i}" value="${esc(x.text)}" placeholder="${esc(t('stepPlaceholder', i + 1))}"></div>`).join('');
+    const mins = [5, 10, 15, 20].map(n => `<button class="${Number(f.minutes) === n ? 'on' : ''}" data-action="focus-min" data-n="${n}" aria-pressed="${Number(f.minutes) === n}">${esc(t('minutesShort', n))}</button>`).join('');
+    return `
+      <section class="card">
+        <h2>★ ${esc(t('stepFocus'))}</h2>
+        <p class="muted">${esc(t('focusIntro'))}</p>
+        <div style="text-align:center;margin:6px 0 4px">${starLine}</div>
+      </section>
+      <section class="card">
+        <h2>${esc(t('focusWhat'))}</h2>
+        <input type="text" data-bind="focus.task" value="${esc(f.task)}">
+        <div class="chips">${t('chips').map(c => `<button class="chip" data-action="focus-chip" data-text="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+        <h2 style="margin-top:18px">${esc(t('focusSteps'))}</h2>
+        <p class="muted" style="font-size:14.5px">${esc(t('focusStepsHint'))}</p>
+        ${steps}
+        ${f.steps.length < 6 ? `<div class="row"><button class="btn small" data-action="focus-add-step">${esc(t('addStep'))}</button></div>` : ''}
+        <h2 style="margin-top:18px">${esc(t('focusHowLong'))}</h2>
+        <div class="seg-lang" role="group">${mins}</div>
+        <div class="row" style="margin-top:18px"><button class="btn primary big-btn" data-action="focus-start">${esc(t('startFocus'))}</button></div>
+      </section>
+      <section class="card">
+        <h2>🗣️ ${esc(t('practiceTitle'))}</h2>
+        <p class="muted">${esc(t('practiceIntro'))}</p>
+        <label class="f">${esc(t('practiceWordsLabel'))}
+          <textarea data-bind="focus.words" rows="2" placeholder="${esc(t('practicePlaceholder'))}">${esc(f.words || '')}</textarea></label>
+        ${audioLib ? `<div class="f" style="font-size:13.5px;font-weight:600;margin-top:10px">${esc(t('soundsLabel'))}</div>
+          <div class="chips">${Object.keys(audioLib.groups).map(g => `<button class="chip" data-action="practice-sound" data-g="${esc(g)}">${esc(g)}</button>`).join('')}</div>` : ''}
+        <div class="grid" style="margin-top:10px">
+          <div><div class="f" style="font-size:13.5px;font-weight:600">${esc(t('repsLabel'))}</div>
+            <div class="seg-lang" role="group">${[1, 3, 5].map(n => `<button class="${Number(f.reps) === n ? 'on' : ''}" data-action="practice-reps" data-n="${n}" aria-pressed="${Number(f.reps) === n}">${esc(t('repsN', n))}</button>`).join('')}</div></div>
+          ${canSpeak ? `<div><div class="f" style="font-size:13.5px;font-weight:600">${esc(t('voiceLabel'))}</div>
+            <div class="seg-lang" role="group">${[['en', 'English'], ['es', 'Español'], ['zh', '中文']].map(([code, label]) => `<button class="${f.voice === code ? 'on' : ''}" data-action="practice-voice" data-code="${code}" aria-pressed="${f.voice === code}">${label}</button>`).join('')}</div></div>` : ''}
+        </div>
+        <div class="mic-box">
+          <div style="font-weight:700">${esc(t('micTitle'))}</div>
+          <p class="muted" style="font-size:14.5px;margin:4px 0 8px">${esc(t('micHelp'))}</p>
+          ${micPossible()
+            ? (f.mic === 'on'
+              ? `<div class="row" style="margin-top:0"><span style="color:var(--ok);font-weight:600">✓ ${esc(t('micOnLabel'))}</span>
+                  <button class="btn small" data-action="review-tries">${esc(t('reviewBtn'))}</button>
+                  <button class="btn ghost small" data-action="mic-off">${esc(t('micTurnOff'))}</button></div>`
+              : `<button class="btn small" data-action="mic-on">${esc(t('micTurnOn'))}</button>`)
+            : `<p class="fine" style="margin:0">${esc(EMBEDDED ? t('micNeedsSite') : t('micBrowser'))}</p>`}
+        </div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn primary big-btn" data-action="practice-start">${esc(t('startPractice'))}</button>
+          <button class="btn" data-action="therapist-note">${esc(t('askTherapist'))}</button>
+        </div>
+        <p class="fine">${esc(t('practiceNote'))}${audioLib ? ` <button class="btn ghost small" style="padding:0;text-decoration:underline" data-action="credits">${esc(t('credits'))}</button>` : ''}</p>
+      </section>
+      <section class="card">
+        <details><summary style="font-size:16px;font-weight:600">${esc(t('tipsTitle'))}</summary>
+          <ul class="tips">${t('tips').map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>
+        <p class="fine">${esc(t('focusNote'))}</p>
+      </section>`;
+  }
+
+  // ------------------------------------------------------------------ Reading a PDF on the device
+  const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  function loadPdfJs() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    return new Promise((resolve, reject) => {
+      const sc = document.createElement('script');
+      sc.src = PDFJS + 'pdf.min.js';
+      sc.onload = () => {
+        if (!window.pdfjsLib) { reject(new Error('pdf.js missing')); return; }
+        // A cross-origin worker can't start, so pdf.js falls back to running on the page.
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      };
+      sc.onerror = reject;
+      document.head.appendChild(sc);
+    });
+  }
+  // Rebuild lines from the PDF's text pieces, so a table row stays on one line.
+  async function pdfToText(buffer) {
+    const lib = await loadPdfJs();
+    const doc = await lib.getDocument({ data: buffer }).promise;
+    const out = [];
+    for (let n = 1; n <= doc.numPages; n++) {
+      const page = await doc.getPage(n);
+      const items = (await page.getTextContent()).items
+        .filter(it => it.str && it.str.trim())
+        .map(it => ({ x: it.transform[4], y: it.transform[5], s: it.str }))
+        .sort((a, b) => b.y - a.y || a.x - b.x);
+      let line = [], lineY = null;
+      const flush = () => { if (line.length) out.push(line.sort((a, b) => a.x - b.x).map(i => i.s).join(' ')); line = []; };
+      items.forEach(it => {
+        if (lineY !== null && Math.abs(it.y - lineY) > 3) flush();
+        if (!line.length) lineY = it.y;
+        line.push(it);
+      });
+      flush();
+      out.push('');
+    }
+    return out.join('\n');
+  }
+  async function handleFile(file) {
+    if (!file) return;
+    notice = { kind: 'info', key: 'reading' };
+    render();
+    let text;
+    try {
+      text = /\.pdf$/i.test(file.name) || file.type === 'application/pdf'
+        ? await pdfToText(await file.arrayBuffer())
+        : await file.text();
+    } catch {
+      notice = { kind: 'warn', key: 'pdfFailed' }; render(); return;
+    }
+    if (!text || text.replace(/\s/g, '').length < 40) { notice = { kind: 'warn', key: 'pdfScanned' }; render(); return; }
+    const doParse = () => {
+      const n = applyParse(text);
+      notice = n ? { kind: 'info', key: 'found', args: [n] } : { kind: 'warn', key: 'foundNone' };
+      save(); render();
+    };
+    const hasLogs = Object.keys(state.weeks).length || Object.keys(state.months).length;
+    if (state.services.length && hasLogs) askConfirm(t('confirmReread'), doParse); else doParse();
+  }
+
+  // ------------------------------------------------------------------ Copy, dialogs, case file as text
+  // Clipboard access can be refused in a hosted frame, so fall back to a hidden textarea.
+  function copyText(text) {
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch { ok = false; }
+      ta.remove();
+      return ok;
+    };
+    try {
+      if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(() => true, () => fallback());
+    } catch { /* fall through */ }
+    return Promise.resolve(fallback());
+  }
+  function copyFeedback(el, ok) {
+    const html = el.innerHTML;
+    el.textContent = ok ? t('copied') : t('copyFailed');
+    setTimeout(() => { el.innerHTML = html; }, 2200);
+  }
+
+  // In-page dialog: hosted pages ignore the browser's confirm() box.
+  let modal = null; // { text, input, yesLabel, onYes, error, value }
+  function renderModal() {
+    const root = document.getElementById('modal-root');
+    if (!modal) { root.innerHTML = ''; return; }
+    root.innerHTML = `<div class="modal-back"><div class="modal" role="dialog" aria-modal="true">
+      ${modal.text ? `<p>${esc(modal.text)}</p>` : ''}
+      ${modal.html || ''}
+      ${modal.input ? `<textarea id="modalInput" rows="5">${esc(modal.value || '')}</textarea>` : ''}
+      ${modal.error ? `<p class="flag">${esc(modal.error)}</p>` : ''}
+      <div class="row">
+        <button class="btn" data-action="modal-no">${esc(modal.noLabel || t('cancel'))}</button>
+        ${modal.onYes ? `<button class="btn primary" data-action="modal-yes">${esc(modal.yesLabel || t('yes'))}</button>` : ''}
+      </div></div></div>`;
+    const focus = root.querySelector(modal.input ? '#modalInput' : '[data-action="modal-yes"]');
+    if (focus) focus.focus();
+  }
+  const openModal = m => { modal = m; renderModal(); };
+  const closeModal = () => { modal = null; renderModal(); };
+  const askConfirm = (text, onYes) => openModal({ text, onYes });
+
+  // The letter plus the session record as plain text, in the letter's language.
+  function caseFileText() {
+    const lg = state.letter.lang;
+    const P = (key, ...args) => { const v = I18N[lg][key]; return typeof v === 'function' ? v(...args) : v; };
+    const r = owed();
+    const ta = document.getElementById('letterText');
+    const start = state.child.startDate;
+    const ws = weekly(), ms = monthly();
+    const cell = (v, e) => (v == null ? P('notRecorded') : P('xOfY', v, e));
+    const out = [ta ? ta.value : generatedLetter(), '', '————————', '',
+      P('recordTitle', state.child.name || P('myChild')),
+      P('recordMeta', state.child.school || '—', C.longDate(state.child.iepDate, lg) || '—', state.child.parentName || P('parentWord'), C.longDate(TODAY, lg)),
+      '', P('summary')];
+    r.rows.forEach(row => out.push(`• ${C.displayName(row.service, lg)}: ${P('happened', row.delivered, row.required, row.missedSessions)}` +
+      (row.missedMinutes ? ` (${C.fmtMinutes(row.missedMinutes, lg)})` : '')));
+    out.push(`${P('total')}: ${C.fmtMinutes(r.totals.missedMinutes, lg)}`, '', P('weekByWeek'));
+    r.weeks.forEach(w => {
+      const st = state.weeks[w] || {};
+      const parts = ws.filter(s => C.expectedFor(s, w, start) > 0).map(s =>
+        `${C.displayName(s, lg)} ${st.closed ? P('closedCell') : cell(st.logs ? st.logs[s.id] : undefined, C.expectedFor(s, w, start))}`);
+      if (parts.length) out.push(`• ${C.weekLabel(w, lg)}: ${parts.join('; ')}`);
+    });
+    if (ms.length) {
+      out.push('', P('monthByMonth'));
+      r.months.forEach(mk => out.push(`• ${C.monthLabel(mk, lg)}: ` +
+        ms.map(s => `${C.displayName(s, lg)} ${cell(state.months[mk] ? state.months[mk][s.id] : undefined, s.freq)}`).join('; ')));
+    }
+    return out.join('\n');
+  }
+
+  // ------------------------------------------------------------------ Render
+  function renderChrome() {
+    document.documentElement.lang = t('htmlLang');
+    document.title = t('title');
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+    document.getElementById('langs').setAttribute('aria-label', t('langLabel'));
+    document.querySelectorAll('#langs button').forEach(b => {
+      b.classList.toggle('on', b.dataset.lang === L());
+      b.setAttribute('aria-pressed', b.dataset.lang === L());
+    });
+    document.querySelectorAll('#steps button').forEach(b => b.classList.toggle('active', b.dataset.tab === state.tab));
+    document.getElementById('banner').innerHTML =
+      (storageOK ? '' : `<div class="notice warn">${esc(t('noStorage'))}</div>`) + noticeHTML();
+  }
+
+  function render() {
+    renderChrome();
+    const views = { iep: viewIEP, checkins: viewCheckins, owed: viewOwed, letter: viewLetter, focus: viewFocus };
+    document.getElementById('app').innerHTML = (views[state.tab] || viewIEP)();
+    if (state.tab === 'letter') fillLetter();
+  }
+
+  function applyParse(text, { demo = false } = {}) {
+    const { meta, services } = C.parseIEP(text);
+    state.iepText = text;
+    state.services = services;
+    const c = state.child;
+    if (meta.childName && (!c.name || demo)) c.name = meta.childName;
+    if (meta.school && (!c.school || demo)) c.school = meta.school;
+    if (meta.iepDate && (!c.iepDate || demo)) c.iepDate = meta.iepDate;
+    const start = meta.startDate || meta.iepDate;
+    if (start && (!c.startDate || demo)) c.startDate = start;
+    state.letter.drafts = { makeup: null, records: null };
+    return services.length;
+  }
+
+  // ------------------------------------------------------------------ Events
+  document.addEventListener('click', e => {
+    const langBtn = e.target.closest('[data-lang]');
+    if (langBtn && langBtn.closest('#langs')) {
+      state.lang = langBtn.dataset.lang;
+      save(); render(); return;
+    }
+    const tab = e.target.closest('[data-tab]');
+    if (tab) { state.tab = tab.dataset.tab; save(); render(); window.scrollTo({ top: 0 }); return; }
+    const el = e.target.closest('[data-action]');
+    if (!el || el.tagName === 'INPUT') return;
+    const { action, sid, week, month } = el.dataset;
+
+    if (action === 'parse') {
+      const text = document.getElementById('iepText').value.trim();
+      if (!text) { notice = { kind: 'warn', key: 'pasteFirst' }; render(); return; }
+      const hasLogs = Object.keys(state.weeks).length || Object.keys(state.months).length;
+      const doParse = () => {
+        const n = applyParse(text);
+        notice = n ? { kind: 'info', key: 'found', args: [n] } : { kind: 'warn', key: 'foundNone' };
+        save(); render();
+      };
+      if (state.services.length && hasLogs) askConfirm(t('confirmReread'), doParse); else doParse();
+      return;
+    }
+    if (action === 'sample') {
+      const hasData = state.services.length || state.iepText;
+      const loadSample = () => {
+        state = blank(state.lang);
+        applyParse(C.SAMPLE_IEP, { demo: true });
+        const demo = C.buildDemoLogs(state.services, state.child.startDate, TODAY);
+        state.weeks = demo.weeks;
+        state.months = demo.months;
+        state.child.parentName = 'Ana Rivera';
+        notice = { kind: 'info', key: 'sampleLoaded' };
+        save(); render();
+      };
+      if (hasData) askConfirm(t('confirmSample'), loadSample); else loadSample();
+      return;
+    }
+    if (action === 'add-service') {
+      state.services.push({ id: 'custom-' + Date.now(), key: 'custom', name: t('newService'), plain: '', related: true,
+        group: 'Individual', freq: 1, per: 'week', minutes: 30, language: '', location: '', review: ['custom'] });
+      save(); render(); return;
+    }
+    if (action === 'remove-service') {
+      const s = state.services.find(x => x.id === sid);
+      if (s) askConfirm(t('confirmRemove', name(s)), () => { state.services = state.services.filter(x => x.id !== sid); save(); render(); });
+      return;
+    }
+    if (action === 'log') {
+      const n = Number(el.dataset.n);
+      if (week) {
+        const st = (state.weeks[week] = state.weeks[week] || { closed: false, logs: {} });
+        st.logs = st.logs || {};
+        if (st.logs[sid] === n) delete st.logs[sid]; else st.logs[sid] = n;
+      } else if (month) {
+        const logs = (state.months[month] = state.months[month] || {});
+        if (logs[sid] === n) delete logs[sid]; else logs[sid] = n;
+      }
+      save(); render(); return;
+    }
+    if (action === 'all-happened') {
+      const st = (state.weeks[week] = state.weeks[week] || { closed: false, logs: {} });
+      st.closed = false;
+      st.logs = st.logs || {};
+      weekly().forEach(s => { const exp = C.expectedFor(s, week, state.child.startDate); if (exp) st.logs[s.id] = exp; });
+      save(); render(); return;
+    }
+    if (action === 'practice-start' || action === 'practice-again') {
+      const words = practiceWords();
+      if (!words.length) { notice = { kind: 'warn', key: 'needWords' }; render(); return; }
+      practice = { words, i: 0, rep: 0, reps: Number(F().reps) || 3, said: 0, done: false, failed: 0, fb: null, listening: false };
+      render(); window.scrollTo({ top: 0 }); return;
+    }
+    if (action === 'practice-hear' && practice) { playWord(practice.words[practice.i]); return; }
+    if (action === 'practice-listen' && practice) { listen(); return; }
+    if (action === 'mic-on') {
+      openModal({ text: t('micConsent'), yesLabel: t('micYes'), noLabel: t('micNo'),
+        onYes: () => { F().mic = 'on'; save(); render(); return true; } });
+      return;
+    }
+    if (action === 'mic-off') { F().mic = 'off'; if (practice) practice.fb = null; save(); render(); return; }
+    if (action === 'review-tries') {
+      listTries().then(list => {
+        const L2 = t('levelLabel');
+        openModal({
+          noLabel: t('close'),
+          html: `<p style="font-weight:700;margin-bottom:2px">${esc(t('reviewTitle'))}</p><p class="muted" style="font-size:14px">${esc(t('reviewHelp'))}</p>` +
+            (list.length
+              ? `<ul class="tries">${list.map(x => `<li><button class="btn small" data-action="play-try" data-id="${x.id}" aria-label="Play">▶</button>
+                   <b>${esc(x.word)}</b><span class="muted">${esc(x.heard ? '“' + x.heard + '”' : '')}</span>
+                   <span class="lvl">${esc(L2[x.level] || '')} · ${Math.round((x.score || 0) * 100)}% · ${esc(C.longDate(x.date, L()))}</span></li>`).join('')}</ul>
+                 <div class="row"><button class="btn ghost small" data-action="clear-tries">${esc(t('deleteAll'))}</button></div>`
+              : `<p class="empty">${esc(t('reviewEmpty'))}</p>`),
+        });
+      });
+      return;
+    }
+    if (action === 'play-try') { playTry(Number(el.dataset.id)); return; }
+    if (action === 'clear-tries') { askConfirm(t('confirmDeleteRec'), () => { clearTries(); }); return; }
+    if (action === 'practice-retry' && practice) { playWord(practice.words[practice.i]); return; }
+    if (action === 'practice-sound' && audioLib) {
+      F().words = (audioLib.groups[el.dataset.g] || []).join(', ');
+      F().voice = 'en';
+      save(); render(); return;
+    }
+    if (action === 'credits' && audioLib) {
+      openModal({
+        noLabel: t('close'),
+        html: `<p>${esc(t('creditsIntro'))}</p><ul class="credits">${audioLib.credits.map(c =>
+          `<li><b>${esc(c.word)}</b>: ${esc(c.author)}, <a href="${esc(c.licenseUrl || c.source)}" target="_blank" rel="noopener">${esc(c.license)}</a>,
+           <a href="${esc(c.source)}" target="_blank" rel="noopener">Wikimedia Commons</a></li>`).join('')}</ul>`,
+      });
+      return;
+    }
+    if (action === 'therapist-note') {
+      const en = C.buildTherapistNote(state, 'en');
+      openModal({
+        noLabel: t('close'), yesLabel: t('copyNote'),
+        html: `<p>${esc(t('noteIntro'))}</p><div class="note-box" lang="en">${esc(en)}</div>` +
+          (L() !== 'en' ? `<p class="muted" style="margin:10px 0 0">${esc(t('noteTranslation'))}</p><div class="note-box">${esc(C.buildTherapistNote(state, L()))}</div>` : ''),
+        onYes: () => {
+          copyText(en).then(ok => { notice = ok ? { kind: 'info', key: 'noteCopied' } : { kind: 'warn', key: 'copyFailed' }; render(); });
+          return true;
+        },
+      });
+      return;
+    }
+    if (action === 'practice-good' && practice) { practiceStep(false); render(); return; }
+    if (action === 'practice-skip' && practice) { practice.failed = 0; practice.fb = null; practiceStep(true); render(); return; }
+    if (action === 'practice-stop') { practice = null; if (canSpeak) { try { window.speechSynthesis.cancel(); } catch { /* ignore */ } } render(); return; }
+    if (action === 'practice-reps') { F().reps = Number(el.dataset.n); save(); render(); return; }
+    if (action === 'practice-voice') { F().voice = el.dataset.code; save(); render(); return; }
+    if (action === 'focus-chip') { F().task = el.dataset.text; save(); render(); return; }
+    if (action === 'focus-add-step') { F().steps.push({ text: '', done: false }); save(); render(); return; }
+    if (action === 'focus-min') { F().minutes = Number(el.dataset.n); save(); render(); return; }
+    if (action === 'focus-start') { startRound(); return; }
+    if (action === 'focus-step-done') {
+      const i = currentStep();
+      if (i >= 0) F().steps[i].done = true;
+      save();
+      if (currentStep() < 0) finishRound('allSteps'); else render();
+      return;
+    }
+    if (action === 'focus-pause' && run) { run.pausedLeft = Math.max(0, run.endsAt - Date.now()); stopTicker(); render(); return; }
+    if (action === 'focus-resume' && run) { run.endsAt = Date.now() + run.pausedLeft; run.pausedLeft = null; startTicker(); render(); return; }
+    if (action === 'focus-stop' || action === 'focus-finish') { endFocus(); return; }
+    if (action === 'focus-break') { startBreak(); return; }
+    if (action === 'focus-next') {
+      stopTicker(); run = null;
+      if (currentStep() < 0) F().steps = [{ text: '', done: false }, { text: '', done: false }];
+      save();
+      if (F().steps.some(x => x.text.trim()) || F().task) startRound(); else render();
+      return;
+    }
+    if (action === 'refresh') { render(); return; }
+    if (action === 'letter-lang') {
+      state.letter.lang = el.dataset.code;
+      save(); render(); return;
+    }
+    if (action === 'copy') { copyText(document.getElementById('letterText').value).then(ok => copyFeedback(el, ok)); return; }
+    if (action === 'copy-case') { copyText(caseFileText()).then(ok => copyFeedback(el, ok)); return; }
+    if (action === 'modal-no') { closeModal(); return; }
+    if (action === 'modal-yes') {
+      if (!modal) return;
+      const input = document.getElementById('modalInput');
+      const keepOpen = modal.onYes(input ? input.value : undefined) === false;
+      if (keepOpen) renderModal(); else closeModal();
+      return;
+    }
+    if (action === 'backup') {
+      const code = 'OWED1:' + btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+      copyText(code).then(ok => { notice = ok ? { kind: 'info', key: 'backupDone' } : { kind: 'warn', key: 'copyFailed' }; render(); window.scrollTo({ top: 0 }); });
+      return;
+    }
+    if (action === 'restore') {
+      openModal({
+        text: t('restorePrompt'), input: true, yesLabel: t('restoreBtn'),
+        onYes: value => {
+          try {
+            const raw = String(value || '').trim();
+            if (!raw.startsWith('OWED1:')) throw new Error('not a backup');
+            const data = JSON.parse(decodeURIComponent(escape(atob(raw.slice(6)))));
+            if (!data || !Array.isArray(data.services)) throw new Error('not a backup');
+            state = normalize(data);
+            notice = { kind: 'info', key: 'restored' };
+            save(); render();
+            return true;
+          } catch {
+            modal.error = t('restoreBad');
+            modal.value = value;
+            return false;
+          }
+        },
+      });
+      return;
+    }
+    if (action === 'print') { printCaseFile(); return; }
+    if (action === 'reset-letter') { state.letter.drafts[letterType()] = null; save(); fillLetter(); return; }
+    if (action === 'letter-type') { state.letter.type = el.dataset.code; save(); render(); return; }
+    if (action === 'reason') {
+      if (week) {
+        const st = (state.weeks[week] = state.weeks[week] || { closed: false, logs: {} });
+        st.reasons = st.reasons || {};
+        st.reasons[sid] = el.dataset.r;
+      } else if (month) {
+        (state.monthReasons[month] = state.monthReasons[month] || {})[sid] = el.dataset.r;
+      }
+      save(); render(); return;
+    }
+    if (action === 'clear-all') {
+      askConfirm(t('confirmClear'), () => {
+        try { localStorage.removeItem(STORE); } catch { /* storage unavailable */ }
+        state = blank(state.lang); render();
+      });
+    }
+  });
+
+  document.addEventListener('change', e => {
+    const el = e.target;
+    if (el.id === 'iepFile') { handleFile(el.files && el.files[0]); el.value = ''; return; }
+    if (el.dataset.fstep != null) { const st = F().steps[Number(el.dataset.fstep)]; if (st) { st.text = el.value; save(); } return; }
+    if (el.dataset.bind) {
+      const [obj, key] = el.dataset.bind.split('.');
+      state[obj][key] = el.value;
+      save();
+      if (state.tab === 'letter') fillLetter();
+      return;
+    }
+    if (el.dataset.sfield) {
+      const s = state.services.find(x => x.id === el.dataset.sid);
+      if (!s) return;
+      const f = el.dataset.sfield;
+      let v = el.value;
+      if (f === 'freq') v = Math.min(10, Math.max(1, parseInt(v, 10) || 1));
+      if (f === 'minutes') v = Math.min(240, Math.max(5, parseInt(v, 10) || 30));
+      // Leaving the translated name as it was keeps the service translatable.
+      if (f === 'name' && v === C.serviceName(s, L())) return;
+      s[f] = v;
+      s.review = [];
+      save();
+      // Update the card in place so a click on another control isn't lost to a re-render.
+      const card = document.querySelector(`[data-card="${CSS.escape(s.id)}"]`);
+      if (card) {
+        card.querySelector('.svc-name').textContent = name(s);
+        card.querySelector('.svc-sum').textContent = C.describeService(s, L());
+        const flag = card.querySelector('.flag');
+        if (flag) flag.remove();
+      }
+      return;
+    }
+    if (el.dataset.action === 'closed') {
+      const w = el.dataset.week;
+      const st = (state.weeks[w] = state.weeks[w] || { closed: false, logs: {} });
+      st.closed = el.checked;
+      save(); render(); return;
+    }
+    if (el.dataset.lopt) {
+      state.letter[el.dataset.lopt] = el.checked;
+      save(); fillLetter();
+    }
+  });
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal) closeModal(); });
+
+  document.addEventListener('input', e => {
+    if (e.target.id === 'letterText') { state.letter.drafts[letterType()] = e.target.value; save(); }
+    if (e.target.id === 'iepText') { state.iepText = e.target.value; save(); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
