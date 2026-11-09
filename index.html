@@ -34,6 +34,10 @@
   .top-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .badge { font-size: 12.5px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.28);
     padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
+  .top-row { display: flex; gap: 8px; align-items: center; }
+  .share-btn { font: inherit; font-size: 14px; color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.4);
+    border-radius: 999px; padding: 5px 13px; cursor: pointer; }
+  .share-btn:hover { background: rgba(255,255,255,.24); }
   .langs { display: flex; border: 1px solid rgba(255,255,255,.4); border-radius: 999px; overflow: hidden; }
   .langs button { font: inherit; font-size: 14px; color: #fff; background: transparent; border: 0;
     padding: 5px 13px; cursor: pointer; }
@@ -227,10 +231,13 @@
       </div>
     </div>
     <div class="top-right">
-      <div class="langs" id="langs" role="group">
-        <button data-lang="en" lang="en">English</button>
-        <button data-lang="es" lang="es">Español</button>
-        <button data-lang="zh" lang="zh-Hans">中文</button>
+      <div class="top-row">
+        <button class="share-btn" data-action="share" data-i18n="shareShort"></button>
+        <div class="langs" id="langs" role="group">
+          <button data-lang="en" lang="en">English</button>
+          <button data-lang="es" lang="es">Español</button>
+          <button data-lang="zh" lang="zh-Hans">中文</button>
+        </div>
       </div>
       <span class="badge" data-i18n="badge"></span>
     </div>
@@ -253,7 +260,8 @@
     <span data-i18n="footer"></span>
     <button data-action="backup" data-i18n="backup"></button> ·
     <button data-action="restore" data-i18n="restore"></button> ·
-    <button data-action="clear-all" data-i18n="clearAll"></button>
+    <button data-action="clear-all" data-i18n="clearAll"></button> ·
+    <button data-action="share" data-i18n="shareLong"></button>
   </div>
 </footer>
 
@@ -363,6 +371,11 @@
       footer: 'Owed is a prototype. It is not a lawyer and does not give legal advice. Everything you enter is saved only in this browser.',
       clearAll: 'Clear all my data',
       confirmClear: 'Delete everything you entered in Owed on this device?',
+      shareShort: '↗ Share', shareLong: 'Tell another parent about Owed',
+      shareTitle: 'Tell another parent about Owed',
+      shareHelp: 'Copy this message and send it by text, WhatsApp, WeChat or email. It has no information about your child.',
+      shareMsg: url => `I'm using Owed, a free app that helps NYC parents track their child's IEP therapy sessions and ask the school to make up missed ones. No account needed, and your data stays on your phone: ${url}`,
+      copyMessage: 'Copy message', shareCopied: 'Message copied. Paste it into a text, WeChat or email.', emailIt: 'Email',
       yes: 'Yes, continue', cancel: 'Cancel',
       copyCase: 'Copy letter + session record', copyFailed: "Couldn't copy. Select the text and copy it by hand.",
       backup: 'Back up my record', restore: 'Restore from backup',
@@ -523,6 +536,11 @@
       footer: 'Owed es un prototipo. No es un abogado y no da asesoría legal. Todo lo que escriba se guarda solo en este navegador.',
       clearAll: 'Borrar todos mis datos',
       confirmClear: '¿Borrar todo lo que escribió en Owed en este aparato?',
+      shareShort: '↗ Compartir', shareLong: 'Cuéntele a otro padre sobre Owed',
+      shareTitle: 'Cuéntele a otro padre sobre Owed',
+      shareHelp: 'Copie este mensaje y envíelo por texto, WhatsApp, WeChat o correo electrónico. No tiene información sobre su hijo.',
+      shareMsg: url => `Estoy usando Owed, una aplicación gratis que ayuda a los padres de NYC a llevar la cuenta de las sesiones de terapia del IEP de su hijo y pedir a la escuela que reponga las que faltaron. No necesita cuenta y sus datos se quedan en su teléfono: ${url}`,
+      copyMessage: 'Copiar mensaje', shareCopied: 'Mensaje copiado. Péguelo en un texto, WeChat o correo electrónico.', emailIt: 'Correo',
       yes: 'Sí, continuar', cancel: 'Cancelar',
       copyCase: 'Copiar carta y registro', copyFailed: 'No se pudo copiar. Seleccione el texto y cópielo a mano.',
       backup: 'Hacer copia de seguridad', restore: 'Restaurar copia',
@@ -682,6 +700,11 @@
       footer: 'Owed是原型版，不是律师，也不提供法律建议。您输入的所有内容只保存在这个浏览器中。',
       clearAll: '清除我的所有数据',
       confirmClear: '要删除您在本设备上输入的所有Owed内容吗？',
+      shareShort: '↗ 分享', shareLong: '告诉其他家长',
+      shareTitle: '把Owed告诉其他家长',
+      shareHelp: '复制这段话，通过短信、WhatsApp、微信或电子邮件发送。里面没有任何关于您孩子的信息。',
+      shareMsg: url => `我在用Owed，这是一款免费应用，帮助纽约市家长记录孩子IEP治疗课的上课情况，并要求学校补上缺少的课。无需注册，数据只保存在您的手机上：${url}`,
+      copyMessage: '复制这段话', shareCopied: '已复制。请粘贴到短信、微信或电子邮件中。', emailIt: '电子邮件',
       yes: '确定', cancel: '取消',
       copyCase: '复制信件和课时记录', copyFailed: '无法复制。请选中文字后手动复制。',
       backup: '备份我的记录', restore: '从备份恢复',
@@ -1887,6 +1910,31 @@
     if (action === 'letter-lang') {
       state.letter.lang = el.dataset.code;
       save(); render(); return;
+    }
+    if (action === 'share') {
+      const SHARE_URL = 'https://jaydencao2026.github.io/owed/';
+      const msg = t('shareMsg', SHARE_URL);
+      const openShareDialog = () => openModal({
+        noLabel: t('close'), yesLabel: t('copyMessage'),
+        html: `<p style="font-weight:700;margin-bottom:4px">${esc(t('shareTitle'))}</p><p class="muted" style="font-size:14.5px">${esc(t('shareHelp'))}</p>
+          <div class="note-box">${esc(msg)}</div>
+          <div class="row" style="margin-top:6px">
+            <a class="btn small" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">WhatsApp ↗</a>
+            ${EMBEDDED ? '' : `<a class="btn small" href="mailto:?subject=Owed&body=${encodeURIComponent(msg)}">${esc(t('emailIt'))} ↗</a>`}
+          </div>`,
+        onYes: () => {
+          copyText(msg).then(ok => { notice = ok ? { kind: 'info', key: 'shareCopied' } : { kind: 'warn', key: 'copyFailed' }; render(); });
+          return true;
+        },
+      });
+      // Phones show their own share sheet (Messages, WhatsApp, WeChat...). Hosted previews don't allow it.
+      if (navigator.share && !EMBEDDED) {
+        navigator.share({ title: 'Owed', text: t('shareMsg', '').replace(/[:：]\s*$/, ''), url: SHARE_URL })
+          .catch(err => { if (!err || err.name !== 'AbortError') openShareDialog(); });
+      } else {
+        openShareDialog();
+      }
+      return;
     }
     if (action === 'copy') { copyText(document.getElementById('letterText').value).then(ok => copyFeedback(el, ok)); return; }
     if (action === 'copy-case') { copyText(caseFileText()).then(ok => copyFeedback(el, ok)); return; }
