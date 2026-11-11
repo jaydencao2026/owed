@@ -711,7 +711,8 @@
   // ---------------------------------------------------------------------------
   // Sound match: how much a heard word sounds like the target word (0 to 1).
   // English words are turned into rough sound units (so "sun" = s-uh-n and
-  // "soon" = s-oo-n), then compared. 0.75 or more counts as a good try.
+  // "soon" = s-oo-n), then compared. 0.85 or more counts as a good try, so in
+  // short words every sound must be right ("thin" or "fink" is not "think").
   // ---------------------------------------------------------------------------
   const HOMOPHONES = [
     ['sun', 'son'], ['sea', 'see', 'c'], ['sail', 'sale'], ['seed', 'cede'], ['road', 'rode', 'rowed'], ['rose', 'rows'],
@@ -767,12 +768,12 @@
     return out.join(' ').split(' ').filter(Boolean);
   }
 
-  function editDistance(a, b) {
+  function editDistance(a, b, same = (x, y) => x === y) {
     const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
     for (let j = 1; j <= b.length; j++) d[0][j] = j;
     for (let i = 1; i <= a.length; i++) {
       for (let j = 1; j <= b.length; j++) {
-        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (same(a[i - 1], b[j - 1]) ? 0 : 1));
       }
     }
     return d[a.length][b.length];
@@ -780,11 +781,70 @@
 
   const clean = w => String(w || '').toLowerCase().replace(/[^\p{L}\p{N}' ]/gu, ' ').replace(/\s+/g, ' ').trim();
 
+  // Chinese is compared by sound (pinyin + tone), not by characters, so a
+  // same-sounding character still counts (书/输) and typed pinyin ("ni hao") works.
+  // The table comes from pinyin-data.js; without it, characters are compared.
+  let PY = null;
+  function pinyinMap() {
+    if (PY) return PY;
+    const g = typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : {});
+    if (!g.OWED_PINYIN) return null;
+    PY = {};
+    g.OWED_PINYIN.split('|').forEach(grp => {
+      const k = grp.match(/^[a-z]+[0-5]/);
+      if (k) for (const c of grp.slice(k[0].length)) PY[c] = k[0];
+    });
+    return PY;
+  }
+  const HAN = /\p{Script=Han}/u;
+  const wordLang = (word, voice) => (HAN.test(String(word || '')) ? 'zh' : pickLang(voice));
+
+  // Sounds of a Chinese word. With characters, each syllable becomes three units:
+  // start sound, vowel part, tone (你好 -> n, i, T3, h, ao, T3), so one wrong sound
+  // in a two-character word is enough to miss 85%. Typed pinyin has no tones and is
+  // compared letter by letter.
+  function zhUnits(text, map) {
+    const units = [];
+    let han = false;
+    for (const ch of String(text).normalize('NFC')) {
+      if (HAN.test(ch)) {
+        han = true;
+        const py = map[ch];
+        if (!py) { units.push(ch); continue; }
+        const m = py.slice(0, -1).match(/^(zh|ch|sh|[bpmfdtnlgkhjqxrzcsyw])?(.*)$/);
+        if (m[1]) units.push(m[1]);
+        if (m[2]) units.push(m[2]);
+        units.push('T' + py.slice(-1));
+      } else {
+        const base = ch.normalize('NFD').toLowerCase().replace(/u\u0308/g, 'v').replace(/[^a-z]/g, '');
+        units.push(...base);
+      }
+    }
+    return { units, han };
+  }
+  const toLetters = units => units.filter(u => !/^T[0-5]$/.test(u)).join('').replace(/v/g, 'u');
+  const sameUnit = (x, y) => x === y || (/^T[0-5]$/.test(x) && /^T[0-5]$/.test(y) && (x === 'T5' || y === 'T5')); // neutral tone matches any
+
+  function zhSimilarity(target, heard) {
+    const map = pinyinMap();
+    if (!map) return null;
+    const A = zhUnits(target, map), B = zhUnits(heard, map);
+    let a = A.units, b = B.units;
+    if (!A.han) { a = [...toLetters(a)]; b = [...toLetters(b)]; } // typed pinyin: letters only, "lu" for "lü" is fine
+    if (!a.length || !b.length) return 0;
+    return Math.max(0, 1 - editDistance(a, b, sameUnit) / Math.max(a.length, b.length));
+  }
+
   // Similarity of one heard word to the target, 0..1.
   function wordSimilarity(target, heard, lang) {
     const t = clean(target), h = clean(heard);
     if (!t || !h) return 0;
     if (t === h || (HOMO[t] && HOMO[t].includes(h))) return 1;
+    if (pickLang(lang) === 'en' && !t.includes(' ') && (h === t + 's' || h === t + 'es')) return 1; // "rabbits" for "rabbit"
+    if (pickLang(lang) === 'zh' || HAN.test(t)) {
+      const z = zhSimilarity(t, h);
+      if (z !== null) return z;
+    }
     let a, b;
     if (pickLang(lang) === 'en') { a = soundUnits(t); b = soundUnits(h); }
     else { a = [...t.replace(/\s/g, '')]; b = [...h.replace(/\s/g, '')]; } // Spanish letters / Chinese characters
@@ -792,15 +852,20 @@
     return Math.max(0, 1 - editDistance(a, b) / Math.max(a.length, b.length));
   }
 
-  // Best match across everything the recognizer offered ("the sun", "son", ...).
+  // Uses only the recognizer's top guess. Its lower guesses often include the
+  // target word even when the child said something else, which made it too easy.
+  // Within that guess, the best word or pair of words counts ("the sun" -> "sun").
   function soundMatch(target, alternatives, lang) {
     let best = { score: 0, heard: '' };
-    (alternatives || []).forEach(alt => {
+    (alternatives || []).slice(0, 1).forEach(alt => {
       const phrase = clean(alt);
       if (!phrase) return;
       const words = phrase.split(' ');
       const cands = new Set([phrase, ...words]);
       for (let i = 0; i + 1 < words.length; i++) cands.add(words[i] + ' ' + words[i + 1]);
+      // Chinese has no spaces: also try each run of characters as long as the target ("我说你好" -> "你好").
+      const n = [...clean(target).replace(/\s/g, '')].length, chars = [...phrase.replace(/\s/g, '')];
+      if (HAN.test(target) && chars.length > n) for (let i = 0; i + n <= chars.length; i++) cands.add(chars.slice(i, i + n).join(''));
       cands.forEach(c => {
         const sc = wordSimilarity(target, c, lang);
         if (sc > best.score || (!best.heard && sc === best.score)) best = { score: sc, heard: c };
@@ -808,7 +873,7 @@
     });
     return best;
   }
-  const MATCH_GOOD = 0.75, MATCH_CLOSE = 0.5;
+  const MATCH_GOOD = 0.85, MATCH_CLOSE = 0.5;
   const matchLevel = score => (score >= MATCH_GOOD ? 'great' : score >= MATCH_CLOSE ? 'close' : 'far');
 
   // ---------------------------------------------------------------------------
@@ -911,7 +976,7 @@ Extended time (1.5x), separate location, directions read aloud.`;
     LANGS, CATALOG, SAMPLE_IEP,
     parseIEP, describeService, displayName, serviceName, servicePlain, howOften,
     computeOwed, expectedFor, periodLabel, buildLetter, buildRecordsRequest, buildTherapistNote, buildDemoLogs,
-    soundUnits, wordSimilarity, soundMatch, matchLevel, MATCH_GOOD,
+    soundUnits, wordSimilarity, soundMatch, matchLevel, MATCH_GOOD, wordLang,
     todayISO, listWeeks, listMonths, mondayOf, firstSchoolDay, addDays,
     longDate, weekLabel, weekTitle, monthLabel, fmtMinutes,
   };

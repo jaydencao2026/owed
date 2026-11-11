@@ -269,6 +269,7 @@
 <div id="print-area"></div>
 
 <script src="core.js"></script>
+<script src="pinyin-data.js"></script>
 <script>
 (() => {
   'use strict';
@@ -429,7 +430,9 @@
       noteTranslation: 'What it says in your language:', copyNote: 'Copy English note',
       noteCopied: 'Note copied. Paste it into an email or message to the therapist.',
       micTitle: '🎤 Microphone check',
-      micHelp: 'For when no grown-up can listen. Your child says each word, and Owed checks if it sounds right. Close tries still count.',
+      micHelp: 'For when no grown-up can listen. Your child says each word, and Owed checks that every sound is right. After 3 tries, it moves on to the next word.',
+      zhTypeChars: 'Type Chinese words in Chinese characters, like 你好. The voice can\'t read pinyin (like "nihao") well.',
+      jumpPractice: '🗣️ Practice words and 🎤 microphone check ↓', micUseInstead: '🎤 No grown-up here? Use the microphone check',
       micTurnOn: 'Turn on microphone check', micOnLabel: 'Microphone check is on', micTurnOff: 'Turn off',
       micConsent: 'Turn on the microphone check? When your child taps 🎤, the browser listens and turns the word into text. To do this, Chrome sends the sound to Google, and Safari sends it to Apple. Owed only keeps a score. Each try is also recorded and saved only on this phone, so you can listen later. You can turn this off at any time.',
       micYes: 'Yes, turn it on', micNo: 'Not now',
@@ -594,7 +597,9 @@
       noteTranslation: 'Lo que dice en su idioma:', copyNote: 'Copiar la nota en inglés',
       noteCopied: 'Nota copiada. Péguela en un correo o mensaje al terapeuta.',
       micTitle: '🎤 Revisión con micrófono',
-      micHelp: 'Para cuando ningún adulto puede escuchar. Su hijo dice cada palabra y Owed revisa si suena bien. Los intentos parecidos también cuentan.',
+      micHelp: 'Para cuando ningún adulto puede escuchar. Su hijo dice cada palabra y Owed revisa que cada sonido esté bien. Después de 3 intentos, pasa a la siguiente palabra.',
+      zhTypeChars: 'Escriba las palabras en chino con caracteres chinos, como 你好. La voz no lee bien el pinyin (como "nihao").',
+      jumpPractice: '🗣️ Practicar palabras y 🎤 revisión con micrófono ↓', micUseInstead: '🎤 ¿No hay un adulto? Use la revisión con micrófono',
       micTurnOn: 'Activar la revisión con micrófono', micOnLabel: 'La revisión con micrófono está activada', micTurnOff: 'Desactivar',
       micConsent: '¿Activar la revisión con micrófono? Cuando su hijo toque 🎤, el navegador escucha y convierte la palabra en texto. Para hacerlo, Chrome envía el sonido a Google y Safari a Apple. Owed solo guarda un puntaje. Cada intento también se graba y se guarda solo en este teléfono para que usted lo escuche después. Puede desactivarlo cuando quiera.',
       micYes: 'Sí, activarla', micNo: 'Ahora no',
@@ -758,7 +763,9 @@
       noteTranslation: '中文意思：', copyNote: '复制英文版',
       noteCopied: '已复制。请粘贴到发给治疗师的邮件或消息中。',
       micTitle: '🎤 麦克风检查',
-      micHelp: '大人没空听的时候使用。孩子说出每个词，Owed会检查听起来对不对。差不多的也算。',
+      micHelp: '大人没空听的时候使用。孩子说出每个词，Owed会检查每个音是否都对。试3次后，会换下一个词。',
+      zhTypeChars: '请用汉字输入中文词语，例如“你好”。语音读不好拼音（例如“nihao”）。',
+      jumpPractice: '🗣️ 练习词语和🎤麦克风检查 ↓', micUseInstead: '🎤 没有大人在旁边？使用麦克风检查',
       micTurnOn: '打开麦克风检查', micOnLabel: '麦克风检查已打开', micTurnOff: '关闭',
       micConsent: '要打开麦克风检查吗？孩子点按🎤时，浏览器会听并把词语转成文字。为此，Chrome会把声音发送给Google，Safari会发送给Apple。Owed只保存分数。每次练习也会录音，只保存在这部手机上，方便您之后收听。您可以随时关闭。',
       micYes: '好，打开', micNo: '暂时不用',
@@ -1248,12 +1255,14 @@
   let practice = null; // { words, i, rep, reps, said, done }
   const VOICE_LANG = { en: 'en-US', es: 'es-US', zh: 'zh-CN' };
   const canSpeak = (() => { try { return 'speechSynthesis' in window && typeof SpeechSynthesisUtterance === 'function'; } catch { return false; } })();
+  // Chinese characters always use the Chinese voice and listener, whatever is picked.
+  const langOf = word => C.wordLang(word, F().voice);
   function speak(text) {
     try {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = VOICE_LANG[F().voice] || 'en-US';
-      const v = bestVoice();
+      u.lang = VOICE_LANG[langOf(text)] || 'en-US';
+      const v = bestVoice(langOf(text));
       if (v) u.voice = v;
       u.rate = 0.8;
       window.speechSynthesis.speak(u);
@@ -1270,12 +1279,12 @@
     sc.onerror = () => { audioLoading = false; audioFailed = true; };
     document.head.appendChild(sc);
   }
-  const clipFor = word => (audioLib && F().voice === 'en' ? audioLib.clips[String(word).toLowerCase()] : null);
+  const clipFor = word => (audioLib && langOf(word) === 'en' ? audioLib.clips[String(word).toLowerCase()] : null);
 
   // Pick the most natural voice the device has for the language, not just the default one.
-  function bestVoice() {
+  function bestVoice(lang) {
     try {
-      const want = (VOICE_LANG[F().voice] || 'en-US').toLowerCase();
+      const want = (VOICE_LANG[lang || F().voice] || 'en-US').toLowerCase();
       const voices = window.speechSynthesis.getVoices().filter(v => v.lang && v.lang.replace('_', '-').toLowerCase().startsWith(want.slice(0, 2)));
       const score = v => (v.lang.replace('_', '-').toLowerCase() === want ? 4 : 0) +
         (/google|enhanced|premium|natural|neural|siri|samantha|ava|allison|aaron|nicky/i.test(v.name) ? 3 : 0) + (v.localService ? 1 : 0);
@@ -1292,7 +1301,7 @@
     speak(word);
   }
 
-  // Microphone check: the browser's speech recognition plus Owed's sound match (75% rule).
+  // Microphone check: the browser's speech recognition plus Owed's sound match (85% rule, top guess only).
   const micPossible = () => !!(window.SpeechRecognition || window.webkitSpeechRecognition) && !EMBEDDED &&
     !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
   const micOn = () => F().mic === 'on' && micPossible();
@@ -1351,8 +1360,8 @@
     }
     const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recog = new Rec();
-    recog.lang = VOICE_LANG[F().voice] || 'en-US';
-    recog.maxAlternatives = 5;
+    recog.lang = VOICE_LANG[langOf(word)] || 'en-US';
+    recog.maxAlternatives = 1;
     recog.interimResults = false;
     recog.continuous = false;
     let finished = false;
@@ -1367,7 +1376,7 @@
         if (error === 'not-allowed' || error === 'service-not-allowed' || error === 'audio-capture') { micResult(word, 'blocked'); return; }
         if (error === 'network') { micResult(word, 'network'); return; }
         if (!alternatives || !alternatives.length) { micResult(word, 'none'); return; }
-        const m = C.soundMatch(word, alternatives, F().voice);
+        const m = C.soundMatch(word, alternatives, langOf(word));
         const level = C.matchLevel(m.score);
         if (chunks.length) saveTry({ word, score: m.score, heard: m.heard, level, date: TODAY, blob: new Blob(chunks, { type: (recorder && recorder.mimeType) || 'audio/webm' }) });
         micResult(word, level, m);
@@ -1405,6 +1414,9 @@
   }
 
   const practiceWords = () => String(F().words || '').split(/[,，、;\n]+/).map(w => w.trim()).filter(Boolean).slice(0, 30);
+  // Tip when Chinese is picked but a word is typed in pinyin ("Nihao"): the voice reads pinyin badly.
+  const zhHint = () => (F().voice === 'zh' && practiceWords().some(w => !/\p{Script=Han}/u.test(w))
+    ? `<p class="fine" style="margin:6px 0 0">💡 ${esc(t('zhTypeChars'))}</p>` : '');
   function practiceStep(advanceOnly) {
     if (!advanceOnly) { practice.rep++; practice.said++; }
     if (advanceOnly || practice.rep >= practice.reps) { practice.i++; practice.rep = 0; }
@@ -1441,7 +1453,7 @@
     const dots = Array.from({ length: practice.reps }, (_, k) => (k < practice.rep ? '●' : '○')).join(' ');
     return `<section class="card focus-stage">
       <div class="now-label">${esc(t('wordOf', practice.i + 1, practice.words.length))}</div>
-      <div class="practice-word" lang="${VOICE_LANG[F().voice] || 'en-US'}">${esc(word)}</div>
+      <div class="practice-word" lang="${VOICE_LANG[langOf(word)] || 'en-US'}">${esc(word)}</div>
       ${clipFor(word) || canSpeak ? `<button class="btn big-btn" data-action="practice-hear">${esc(t('hearIt'))}</button>
         <div class="voice-tag">${esc(clipFor(word) ? t('realRecording') : t('computerVoice'))}</div>` : ''}
       <p class="muted" style="margin:16px 0 4px">${esc(t('sayIt', practice.reps))}</p>
@@ -1451,7 +1463,8 @@
       <div class="row" style="justify-content:center;margin-top:8px">
         <button class="btn primary big-btn" data-action="practice-good">${esc(t('triedIt'))}</button>
         <button class="btn big-btn" data-action="practice-retry">${esc(t('tryAgain'))}</button>
-      </div>`}
+      </div>
+      ${micPossible() ? `<div class="row" style="justify-content:center;margin-top:6px"><button class="btn small" data-action="mic-on">${esc(t('micUseInstead'))}</button></div>` : ''}`}
       <div class="row" style="justify-content:center">
         <button class="btn" data-action="practice-skip">${esc(t('skipWord'))}</button>
         <button class="btn ghost" data-action="practice-stop">${esc(t('stop'))}</button>
@@ -1527,6 +1540,7 @@
         <h2>★ ${esc(t('stepFocus'))}</h2>
         <p class="muted">${esc(t('focusIntro'))}</p>
         <div style="text-align:center;margin:6px 0 4px">${starLine}</div>
+        <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" data-action="jump-practice">${esc(t('jumpPractice'))}</button></div>
       </section>
       <section class="card">
         <h2>${esc(t('focusWhat'))}</h2>
@@ -1540,11 +1554,12 @@
         <div class="seg-lang" role="group">${mins}</div>
         <div class="row" style="margin-top:18px"><button class="btn primary big-btn" data-action="focus-start">${esc(t('startFocus'))}</button></div>
       </section>
-      <section class="card">
+      <section class="card" id="practice-card">
         <h2>🗣️ ${esc(t('practiceTitle'))}</h2>
         <p class="muted">${esc(t('practiceIntro'))}</p>
         <label class="f">${esc(t('practiceWordsLabel'))}
           <textarea data-bind="focus.words" rows="2" placeholder="${esc(t('practicePlaceholder'))}">${esc(f.words || '')}</textarea></label>
+        <div id="zhHint">${zhHint()}</div>
         ${audioLib ? `<div class="f" style="font-size:13.5px;font-weight:600;margin-top:10px">${esc(t('soundsLabel'))}</div>
           <div class="chips">${Object.keys(audioLib.groups).map(g => `<button class="chip" data-action="practice-sound" data-g="${esc(g)}">${esc(g)}</button>`).join('')}</div>` : ''}
         <div class="grid" style="margin-top:10px">
@@ -1825,6 +1840,11 @@
       practice = { words, i: 0, rep: 0, reps: Number(F().reps) || 3, said: 0, done: false, failed: 0, fb: null, listening: false };
       render(); window.scrollTo({ top: 0 }); return;
     }
+    if (action === 'jump-practice') {
+      const card = document.getElementById('practice-card');
+      if (card) card.scrollIntoView({ block: 'start' });
+      return;
+    }
     if (action === 'practice-hear' && practice) { playWord(practice.words[practice.i]); return; }
     if (action === 'practice-listen' && practice) { listen(); return; }
     if (action === 'mic-on') {
@@ -2044,6 +2064,11 @@
   document.addEventListener('input', e => {
     if (e.target.id === 'letterText') { state.letter.drafts[letterType()] = e.target.value; save(); }
     if (e.target.id === 'iepText') { state.iepText = e.target.value; save(); }
+    if (e.target.dataset && e.target.dataset.bind === 'focus.words') {
+      state.focus.words = e.target.value;
+      const z = document.getElementById('zhHint');
+      if (z) z.innerHTML = zhHint();
+    }
   });
 
   render();
